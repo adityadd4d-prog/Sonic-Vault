@@ -89,7 +89,6 @@ class DetailFetcherThread:
                 logger.critical("Stoping this Thread.")
                 raise ValueError
             elif e.code in [429]:
-                # Rate limited — key is valid but throttled, retry with backoff
                 logger.debug("Key Is Valid but Rate Limited. Trying Again")
                 time.sleep(min(2 ** self.try_cnt, 60))
                 if self.try_cnt == self.MAX_TRIES:
@@ -110,7 +109,6 @@ class DetailFetcherThread:
                 self.try_cnt += 1
                 self.api_key = api_key
             else:
-                # Unexpected error code — don't silently accept the key
                 self.detail_queue.put(None)
                 logger.exception("Unhandled Exception Thrown From API")
                 logger.critical("Stoping This Thread")
