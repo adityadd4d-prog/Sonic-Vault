@@ -88,5 +88,4 @@ def test_setup_loggers():
     initial_count = len(root_logger.handlers)
     setup_loggers()
     assert len(root_logger.handlers) > initial_count
-    # Clean up to avoid side effects on other tests
     root_logger.handlers = root_logger.handlers[:initial_count]
