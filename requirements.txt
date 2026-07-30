@@ -1,0 +1,6 @@
+google-genai
+httpx
+pydantic
+streamlit
+pandas
+plotly

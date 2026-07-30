@@ -4,9 +4,11 @@ from pathlib import Path
 import threading
 import queue
 import logging
+from sys import exit
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
+
 
 def main():
     dire = input("Directory Path : ").strip()
@@ -14,7 +16,7 @@ def main():
     logger.info("Reading CSV ...")
     reader = Scrapper.CsvScrapper(dire)
     data = reader.scrap()
-    logger.info(f"Finished Reading. Loaded {data['loaded']} CSV Files. Failed To Load {len(data["fails"])} Files.")
+    logger.info(f"Finished Reading. Loaded {data['loaded']} CSV Files. Failed To Load {len(data['fails'])} Files.")
     if data["fails"]:
         logger.error(f"The Failed Files Were : {data['fails']}")
     opt = input("\nWould You Like to Proceed With Database Creation [y/N] : ").strip()
@@ -27,13 +29,13 @@ def main():
     api_keys = keys()
     job_queue = queue.Queue()
     response_queue = queue.Queue()
-    sqlite_thread = threading.Thread(target=sqlite3_thread, args=(db_name, data, job_queue, response_queue, len(api_keys)), name="Database Writer")
-    sqlite_thread.start()
     threads_trackers = start_job_consumer_threads(api_keys, job_queue, response_queue)
+    sqlite_thread = threading.Thread(target=sqlite3_thread, args=(db_name, data, job_queue, response_queue, len(threads_trackers)), name="Database Writer")
+    sqlite_thread.start()
     for thread in threads_trackers:
         thread.join()
     sqlite_thread.join()
-    logger.info("\nDatabase Creation Finished.")
+    logger.info("Database Creation Finished.")
     logger.info("Exiting Program...")
 
 def setup_loggers():
@@ -52,7 +54,7 @@ def setup_loggers():
     file_handler = logging.FileHandler("Database.log", mode="w", encoding="utf-8")
     file_handler.setLevel(logging.DEBUG)
     file_formater = logging.Formatter(
-        "%(asctime)s | %(levelname)-8s | %(name)-8s | %(funcName)-25s | %(threadName)-15s | %(message)s",
+        "%(asctime)s | %(levelname)-8s | %(name)-8s |  %(threadName)-15s | %(funcName)-20s | %(message)s",
         datefmt="%d-%m %H:%M:%S"
     )
     file_handler.setFormatter(file_formater)
@@ -74,11 +76,16 @@ def sqlite3_thread(db_name, data, job_queue, response_queue, thread_count):
         db_schema(cursor)
         connection.commit()
         logger.info("Database Schema Successfully Commited.")
+        fill_tags_table(cursor)
         insert_data(cursor, data, job_queue, thread_count)
         logger.info("CSV Data Successfully Inserted.")
         connection.commit()
+        tags = { tag : tag_id for tag_id, tag in cursor.execute("SELECT * FROM tags").fetchall()}
         pill_count = 0
         while True:
+            if thread_count == 0:
+                logger.critical("Failed To Start Any Threads!")
+                break
             if pill_count == thread_count:
                 break
             response = response_queue.get()
@@ -86,7 +93,7 @@ def sqlite3_thread(db_name, data, job_queue, response_queue, thread_count):
                 pill_count += 1
                 continue
             job_no, job, details = response
-            query = "INSERT INTO details (main_id, brand, name, driver, freq_range, impedance, connector_type, signature, mrp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            query = "INSERT INTO details (main_id, brand, name, driver, anc, freq_range, impedance, connector_type, signature, mrp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
             logger.info(f"WRITING | Job {job_no} : {list(job.keys())}")
             for iem in details:
                 try:
@@ -95,8 +102,15 @@ def sqlite3_thread(db_name, data, job_queue, response_queue, thread_count):
                     logger.exception(f"Key : {iem['search_name']} Not Found in {job.keys()}")
                     logger.error(f"Skipping Details For This IEM : {iem['brand']} {iem['name']}")
                     continue
-                values = (idx, iem['brand'], iem['name'], iem['driver'], iem['freq_range'], iem['impedance'], iem['connector_type'], iem['signature'], iem['mrp'])
-                cursor.execute(query, values)
+                try:
+                    cursor.executemany("INSERT OR IGNORE INTO tag_relations (main_id, tag_id) VALUES (?, ?)",[(idx, tags[tag.strip()]) for tag in iem['tags'].split(",")] )
+                except sqlite3.DatabaseError, KeyError:
+                    logger.exception(f"Failed To Insert Tags | Job {job_no} : {iem['tags']} Not Found In {tags}")
+                values = (idx, iem['brand'], iem['name'], iem['driver'], iem['anc'], iem['freq_range'], iem['impedance'], iem['connector_type'], iem['signature'], iem['mrp'])
+                try:
+                    cursor.execute(query, values)
+                except sqlite3.DatabaseError:
+                    logger.exception(f"Failed To Insert Details | Job {job_no} : {values}")
             connection.commit()
 
 
@@ -170,12 +184,13 @@ def db_schema(cursor):
                     brand TEXT,
                     name TEXT,
                     driver TEXT,
+                    anc TEXT,   
                     freq_range TEXT,
                     impedance TEXT,
                     connector_type TEXT,
                     signature TEXT,
-                    mrp TEXT,
-                    FOREIGN KEY(main_id) REFERENCES main(id)
+                    mrp REAL,
+                    FOREIGN KEY (main_id) REFERENCES main(id)
                 )
               """)
 
@@ -186,9 +201,39 @@ def db_schema(cursor):
                     main_id INTEGER UNIQUE NOT NULL,
                     freqs TEXT,
                     value TEXT,
-                    FOREIGN KEY(main_id) REFERENCES main(id)
+                    FOREIGN KEY (main_id) REFERENCES main(id)
                 )
             """)
+
+    # Tags Table
+    cursor.execute("""
+                CREATE TABLE IF NOT EXISTS tags (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    tag TEXT UNIQUE
+                )
+            """)
+
+    # Tags Relation Table
+    cursor.execute("""
+                CREATE TABLE IF NOT EXISTS tag_relations (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    main_id INTEGER,
+                    tag_id INTEGER,
+                    FOREIGN KEY (main_id) REFERENCES main(id),
+                    FOREIGN KEY (tag_id) REFERENCES tags(id)
+                )
+            """)
+
+def fill_tags_table(cursor):
+    IEM_TAGS = (
+        "Dynamic Driver", "Balanced Armature", "Planar Magnetic", "Electrostatic", "Hybrid", "Tribrid",
+        "Neutral", "Warm", "Bright", "Dark", "V Shaped", "U Shaped", "Basshead", "Mid Forward", "Harman Target",
+        "Stage Monitor", "Studio Reference", "Casual Listening", "Gaming", "Sports", "Sleep Friendly", "ANC",
+        "Detachable Cable","MMCX", "2 Pin", "Wireless TWS", "Balanced Cable Included", "Tuning Switches",
+        "Quadbrid", "Pentabrid", "Hexabrid"
+    )
+    cursor.executemany("INSERT OR IGNORE INTO tags (tag) VALUES (?)", [(tag,) for tag in IEM_TAGS])
+
 
 def check(db_name):
     for file in Path(Path.cwd()).iterdir():
@@ -206,4 +251,7 @@ def check(db_name):
                 exit()
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        exit("Program Terminated!")
