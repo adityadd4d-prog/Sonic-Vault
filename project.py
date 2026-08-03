@@ -1,4 +1,5 @@
 import Scrapper
+from Scrapper import IEM_TAGS
 import sqlite3
 from pathlib import Path
 import threading
@@ -51,7 +52,7 @@ def setup_loggers():
     screen_handler.setFormatter(screen_formater)
     root_logger.addHandler(screen_handler)
 
-    file_handler = logging.FileHandler("Database.log", mode="w", encoding="utf-8")
+    file_handler = logging.FileHandler("Scrapper.log", mode="w", encoding="utf-8")
     file_handler.setLevel(logging.DEBUG)
     file_formater = logging.Formatter(
         "%(asctime)s | %(levelname)-8s | %(name)-8s |  %(threadName)-15s | %(funcName)-20s | %(message)s",
@@ -104,7 +105,7 @@ def sqlite3_thread(db_name, data, job_queue, response_queue, thread_count):
                     continue
                 try:
                     cursor.executemany("INSERT OR IGNORE INTO tag_relations (main_id, tag_id) VALUES (?, ?)",[(idx, tags[tag.strip()]) for tag in iem['tags'].split(",")] )
-                except sqlite3.DatabaseError, KeyError:
+                except (sqlite3.DatabaseError, KeyError):
                     logger.exception(f"Failed To Insert Tags | Job {job_no} : {iem['tags']} Not Found In {tags}")
                 values = (idx, iem['brand'], iem['name'], iem['driver'], iem['anc'], iem['freq_range'], iem['impedance'], iem['connector_type'], iem['signature'], iem['mrp'])
                 try:
@@ -225,13 +226,6 @@ def db_schema(cursor):
             """)
 
 def fill_tags_table(cursor):
-    IEM_TAGS = (
-        "Dynamic Driver", "Balanced Armature", "Planar Magnetic", "Electrostatic", "Hybrid", "Tribrid",
-        "Neutral", "Warm", "Bright", "Dark", "V Shaped", "U Shaped", "Basshead", "Mid Forward", "Harman Target",
-        "Stage Monitor", "Studio Reference", "Casual Listening", "Gaming", "Sports", "Sleep Friendly", "ANC",
-        "Detachable Cable","MMCX", "2 Pin", "Wireless TWS", "Balanced Cable Included", "Tuning Switches",
-        "Quadbrid", "Pentabrid", "Hexabrid"
-    )
     cursor.executemany("INSERT OR IGNORE INTO tags (tag) VALUES (?)", [(tag,) for tag in IEM_TAGS])
 
 

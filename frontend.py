@@ -5,7 +5,7 @@ from reference_data import HARMAN_2019_RAW, HARMAN_2019_FREQUENCY
 import plotly.express as px
 
 def main():
-    st.title("Graphically Music")
+    st.title("Sonic Vault")
     search, iem_compare = st.tabs(["Search", "Compare"])
 
     connection = db_connection()

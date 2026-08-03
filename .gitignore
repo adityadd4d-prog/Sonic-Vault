@@ -216,3 +216,12 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+
+# User
+.python-version
+Audio (copy 1).db
+Data/
+pyproject.toml
+uv.lock
+
