@@ -27,7 +27,7 @@ def main():
         exit()
     db_name = "Audio.db"
     check(db_name)
-    api_keys = keys()
+    api_keys = get_api_keys()
     job_queue = queue.Queue()
     response_queue = queue.Queue()
     threads_trackers = start_job_consumer_threads(api_keys, job_queue, response_queue)
@@ -62,13 +62,26 @@ def setup_loggers():
     root_logger.addHandler(file_handler)
 
 
-def keys():
-    no_of_keys = int(input("\nHow Many Gemini API Keys do you have : ").strip())
-    keys = []
-    print(f"\nEnter Keys one by one:-")
-    for i in range(1,no_of_keys+1):
-        keys.append(input(f"{i}. ").strip())
-    return tuple(keys)
+def get_api_keys():
+    file_name = input("\nEnter File Name In Which API Keys Are Stored : ").strip()
+    logger.info(f"Reading {file_name} ...")
+    flag = True
+    while flag:
+        try:
+            api_keys = []
+            with open(file_name, "r") as file:
+                for line in file:
+                    api_keys.append(line.strip())
+                return tuple(api_keys)
+        except FileNotFoundError:
+            logger.error(f"{file_name} Not Found !")
+        except PermissionError:
+            logger.error("You Do Not Have Permission To Read This File !")
+        ch = input("Would Like To Try With Another File [Y/n] : ").strip()
+        if ch.lower() in ["n", "no"]:
+            logger.warning("No API Keys To Spawn Threads !")
+            logger.info("Exiting Program...")
+            exit()
 
 
 def sqlite3_thread(db_name, data, job_queue, response_queue, thread_count):
@@ -245,7 +258,5 @@ def check(db_name):
                 exit()
 
 if __name__ == "__main__":
-    try:
-        main()
-    except KeyboardInterrupt:
-        exit("Program Terminated!")
+    main()
+
