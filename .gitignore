@@ -224,4 +224,5 @@ Audio (copy 1).db
 Data/
 pyproject.toml
 uv.lock
+API_KEYS
 

@@ -63,11 +63,11 @@ def setup_loggers():
 
 
 def get_api_keys():
-    file_name = input("\nEnter File Name In Which API Keys Are Stored : ").strip()
-    logger.info(f"Reading {file_name} ...")
     flag = True
     while flag:
         try:
+            file_name = input("\nEnter File Name In Which API Keys Are Stored : ").strip()
+            logger.info(f"Reading {file_name} ...")
             api_keys = []
             with open(file_name, "r") as file:
                 for line in file:
