@@ -1,3 +1,11 @@
+"""
+A Frontend UI to Query The SQLite Database Created Using The 'project.py' Script.
+This UI Offers For Querying The Database Directly Via Using Names And
+It Also Offers The Feature of Building Dynamic Queries Using Different Criteria Such As Tags, Brands, Connector Type and Price Range.
+It Also Offers Another Section Where One Can Compare Upto 3 Different IEMs By Overlaying Their Frequency Response Graphs Over Each Other
+And Arranging Their Specifications In A Tabular Form.
+"""
+
 import streamlit as st
 import sqlite3
 import pandas as pd
@@ -18,9 +26,12 @@ def main():
         compare_menu(connection, lookup_dict, names)
 
 def compare_menu(connection, lookup_dict, names):
+    """
+    This Tab Is Responsible For Handling The Comparing Part Of The Program And Helps Compare Upto 3 IEMs.
+    """
     st.header("Compare")
     st.text("Select IEMs To Compare : ")
-    iems = st.multiselect("Select IEMs To Compare : ", names, label_visibility="collapsed", max_selections=3)
+    iems = st.multiselect("Select IEMs To Compare : ", names, label_visibility="collapsed", max_selections=3) # Change max_selection to compare More IEMs
     if len(iems) != 0:
         with st.container(border=True):
             plot_response_graphs(connection,[lookup_dict[iem] for iem in iems])
@@ -41,6 +52,9 @@ def compare_menu(connection, lookup_dict, names):
 
 
 def search_menu(connection, lookup_dicts, names, brands, tags):
+    """
+    This Tab Is Responsible For Handling The Search Part of The Program and Help Look Through Various IEM Details.
+    """
     st.header("Search")
     st.text("Which IEM Are You Looking For ?")
     
@@ -78,6 +92,9 @@ def search_menu(connection, lookup_dicts, names, brands, tags):
 
 
 def format_query(brand, c_type, l_price, u_price, selected_tags, lookup_tags):
+    """
+    This Helps Build A Dynamic SQLite Query Based On The Input Parameters Given To The Function
+    """
     temp_query = []
 
     if brand:
@@ -104,6 +121,11 @@ def format_query(brand, c_type, l_price, u_price, selected_tags, lookup_tags):
 PAGE_SIZE = 5
 
 def list_iem(iems, connection):
+    """
+    This Helps Generate Page Display When The Number Of IEMs To Display Exceeds 5,
+    It Does So That By Making Sure That At Any Given Time There Are No More Than 5 IEM Details Displayed
+    Even If The Query Fetched More Than 5 Results.
+    """
     page = st.session_state.get("page", 0)
     total_pages = max(1, -(-len(iems) // PAGE_SIZE))
     page = min(page, total_pages - 1)
@@ -126,21 +148,23 @@ def list_iem(iems, connection):
                 st.rerun()
 
 def iem_display(idx, connection):
+    # It Help Generates A Display Card For Displaying IEM Details And Frequency Graph
     details = query_search(f"SELECT * FROM details WHERE main_id = {idx}",connection)
     if details is None:
         st.error("IEM Details Not Found!")
         return
     with st.container(border=True):
         st.subheader(f"{details[2]} {details[3]}")
+        plot_response_graphs(connection, list([idx]))
         labels = ["Brand", "Name", "Drivers", "ANC", "Frequency Response", "Impedance",
                   "Connector Type", "Sound Signature", "Maximum Retail Price"]
         values = [*details[2:10] , f"{details[10]} USD"]
         spec_df = pd.DataFrame({"Specification": labels, "Value": values})
         st.table(spec_df)
-        plot_response_graphs(connection, list([idx]))
 
 
 def plot_response_graphs(connection, main_ids):
+    # Handles The Plotting of Logarithmic Graphs For The Frequency Response Graphs
     target_df = pd.DataFrame({
         "Frequency": HARMAN_2019_FREQUENCY,
         "Values": HARMAN_2019_RAW,
@@ -171,6 +195,7 @@ def plot_response_graphs(connection, main_ids):
 
 @st.cache_data
 def load_measurement(_conn, main_id):
+    # Returns The Frequency Response Data Of The IEM In A Pandas DataFrame
     result = _conn.execute(f"SELECT freqs, value FROM measurements WHERE main_id = ?", (main_id,)).fetchone()
     if result is None:
         return None
@@ -181,6 +206,7 @@ def load_measurement(_conn, main_id):
 
 @st.cache_resource
 def db_connection():
+    # Caching The Connection To Prevent Opening of Different Connections on Each New Query
     try:
         connection = sqlite3.connect("file:Audio.db?mode=ro", uri=True, check_same_thread=False)
         return connection
@@ -190,6 +216,12 @@ def db_connection():
 
 @st.cache_data
 def load_iem_data(_conn):
+    """
+    Caching all The Frequently Used Data To Reduce Search Times
+
+    :returns
+    A Tuple Containing The Frequently Used Data Such As IEM names, IEM brand names and tags Used
+    """
     cursor = _conn.cursor()
     data = cursor.execute("SELECT * FROM main").fetchall()
     lookup_dict = {name : main_id for main_id, name in data}
