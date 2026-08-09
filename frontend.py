@@ -126,7 +126,7 @@ def format_query(brand, c_type, l_price, u_price, selected_tags, lookup_tags):
 PAGE_SIZE = 5
 def list_iem(iems, connection):
     """
-    This Helps Generate Page Display When The Number Of IEMs To Display Exceeds 5,
+    This Helps Generate Page Display When The Number Of IEMs To Display Exceeds 5.
     It Does So That By Making Sure That At Any Given Time There Are No More Than 5 IEM Details Displayed
     Even If The Query Fetched More Than 5 Results.
     """

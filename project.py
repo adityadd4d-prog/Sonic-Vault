@@ -5,8 +5,6 @@ LLMs To Get Their Specification Details Using Search Grounding And Then Converti
 A Structured JSON Response. All This Information Is Then Stored In The Created SQLite3 Database.
 """
 
-import Scrapper
-from Scrapper import IEM_TAGS
 import sqlite3
 from pathlib import Path
 import threading
@@ -14,16 +12,22 @@ import queue
 import logging
 from sys import exit
 
+import Scrapper
+from Scrapper import IEM_TAGS
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 def main():
     dire = input("Directory Path : ").strip()
+
     setup_loggers()
+
     logger.info("Reading CSV ...")
     reader = Scrapper.CsvScrapper(dire)
     data = reader.scrap()
     logger.info(f"Finished Reading. Loaded {data['loaded']} CSV Files. Failed To Load {len(data['fails'])} Files.")
+
     if data["fails"]:
         logger.error(f"The Failed Files Were : {data['fails']}")
     opt = input("\nWould You Like to Proceed With Database Creation [y/N] : ").strip()
@@ -31,21 +35,32 @@ def main():
         logger.info("Database Creation Cancelled.")
         logger.info("Exiting Program...")
         exit()
+
     db_name = "Audio.db"
     check(db_name)
     api_keys = get_api_keys()
+
     job_queue = queue.Queue()
     response_queue = queue.Queue()
+
+    # Spawning All Threads
     threads_trackers = start_job_consumer_threads(api_keys, job_queue, response_queue)
     sqlite_thread = threading.Thread(target=sqlite3_thread, args=(db_name, data, job_queue, response_queue, len(threads_trackers)), name="Database Writer")
     sqlite_thread.start()
+
+    # Waiting For All Thread To Finish Their Work
     for thread in threads_trackers:
         thread.join()
     sqlite_thread.join()
+
     logger.info("Database Creation Finished.")
     logger.info("Exiting Program...")
 
+
 def setup_loggers():
+    """
+    Sets Up The Loggers For Use In The Pipeline.
+    """
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.ERROR)
 
@@ -69,6 +84,9 @@ def setup_loggers():
 
 
 def get_api_keys():
+    """
+    :return: A Tuple Containing All The API Keys Found In The File.
+    """
     flag = True
     while flag:
         try:
@@ -91,50 +109,78 @@ def get_api_keys():
 
 
 def sqlite3_thread(db_name, data, job_queue, response_queue, thread_count):
+    """
+    This Is The Writer Thread Responsible For Handling All The Writes To The Database.
+    It Takes Details From The Response Queue And Writes Them To The Database.
+    """
     with sqlite3.connect(db_name) as connection:
         cursor = connection.cursor()
-        db_schema(cursor)
+
+        db_schema(cursor) # Sets The Schema Of The Database
         connection.commit()
         logger.info("Database Schema Successfully Commited.")
-        fill_tags_table(cursor)
-        insert_data(cursor, data, job_queue, thread_count)
+
+        fill_tags_table(cursor) # Fills The Tags Table
+        insert_data(cursor, data, job_queue, thread_count) # Fills The Main And Measurement Table And Queues All The Jobs
         logger.info("CSV Data Successfully Inserted.")
         connection.commit()
+
+        # Generates A Lookup Dict Of Tags To Reduce Query Time
         tags = { tag : tag_id for tag_id, tag in cursor.execute("SELECT * FROM tags").fetchall()}
+
         pill_count = 0
         while True:
+
+            # Exit Conditions For The Loop
             if thread_count == 0:
                 logger.critical("Failed To Start Any Threads!")
                 break
             if pill_count == thread_count:
                 break
+
             response = response_queue.get()
             if response is None:
                 pill_count += 1
                 continue
-            job_no, job, details = response
+
+            job_no, job, job_details = response
+
             query = "INSERT INTO details (main_id, brand, name, driver, anc, freq_range, impedance, connector_type, signature, mrp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
             logger.info(f"WRITING | Job {job_no} : {list(job.keys())}")
-            for iem in details:
+
+            for iem in job_details:
+
+                # Gets main_id For Use In Queries
                 try:
                     idx = job[iem['search_name'].lower()]
                 except KeyError:
                     logger.exception(f"Key : {iem['search_name']} Not Found in {job.keys()}")
                     logger.error(f"Skipping Details For This IEM : {iem['brand']} {iem['name']}")
                     continue
+
+                # Writes All Tags Relations
                 try:
                     cursor.executemany("INSERT OR IGNORE INTO tag_relations (main_id, tag_id) VALUES (?, ?)",[(idx, tags[tag.strip()]) for tag in iem['tags'].split(",")] )
                 except (sqlite3.DatabaseError, KeyError):
                     logger.exception(f"Failed To Insert Tags | Job {job_no} : {iem['tags']} Not Found In {tags}")
+
+                # Writes All Specification Details
                 values = (idx, iem['brand'], iem['name'], iem['driver'], iem['anc'], iem['freq_range'], iem['impedance'], iem['connector_type'], iem['signature'], iem['mrp'])
                 try:
                     cursor.execute(query, values)
                 except sqlite3.DatabaseError:
                     logger.exception(f"Failed To Insert Details | Job {job_no} : {values}")
             connection.commit()
+        logger.info("All Data Written")
+        logger.info("Stopping SQLite Writer Thread")
 
 
 def start_job_consumer_threads(api_keys, job_queue, response_queue):
+    """
+    This Function Spawns A Data Fetcher Worker Thread On Per API Key
+    :param api_keys: A List Of All Avialable API Keys
+    :return: A List Of Object To Access Each thread
+    """
     threads_tracker = []
     for i, key in enumerate(api_keys, start=1):
         try:
@@ -149,12 +195,18 @@ def start_job_consumer_threads(api_keys, job_queue, response_queue):
 
 
 def insert_data(cursor, data, job_queue, thread_count):
-
+    """
+    It Writes All The Data Scraped From The CSV Files And Inserts Them In The Database.
+    It Also Batches The Names Of the IEMs In 5 And Inserts Them Into The Job Queue.
+    It Also Inserts The Poison Pills According To The Number Of Threads Spawned.
+    """
     measurements_query = "INSERT OR IGNORE INTO measurements (main_id, freqs, value) VALUES (?, ?, ?)"
     main_query = "INSERT INTO main (name) VALUES (?)"
 
     job = {}
     job_no = 1
+
+    # Writing The Scraped Data To The Database
     for item in data["dataSet"]:
         name, measurements = item
         freqs, values = measurements
@@ -173,7 +225,8 @@ def insert_data(cursor, data, job_queue, thread_count):
 
         cursor.execute(measurements_query, (main_id, freqs_str, values_str))
 
-        if len(job) == 5:
+        # Batching Together IEM Names Into 5
+        if len(job) == 5: # Change The Number Here To Increase/Decrease The Batch Volume
             job_queue.put((job, job_no))
             logger.debug(f"Job {job_no} Queued : {list(job.keys())}")
             job_no += 1
@@ -181,9 +234,10 @@ def insert_data(cursor, data, job_queue, thread_count):
     if job:
         job_queue.put((job, job_no))
         logger.debug(f"Job {job_no} Queued : {list(job.keys())}")
+
+    # Putting Poison Pills
     for _ in range(thread_count):
         job_queue.put(None)
-
 
 
 def db_schema(cursor):
@@ -245,6 +299,7 @@ def db_schema(cursor):
                 )
             """)
 
+
 def fill_tags_table(cursor):
     cursor.executemany("INSERT OR IGNORE INTO tags (tag) VALUES (?)", [(tag,) for tag in IEM_TAGS])
 
@@ -267,6 +322,7 @@ def check(db_name):
                 logger.info("Database Creation Cancelled.")
                 logger.info("Exiting Program...")
                 exit()
+
 
 if __name__ == "__main__":
     main()
