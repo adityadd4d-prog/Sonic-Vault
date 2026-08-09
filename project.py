@@ -1,3 +1,10 @@
+"""
+This Program Is Responsible For Creating The SQLite3 Database Used By 'frontend.py' Program.
+This Creates The Database By Scraping The Measurement Data From The Given Directory Then Using
+LLMs To Get Their Specification Details Using Search Grounding And Then Converting That Information To
+A Structured JSON Response. All This Information Is Then Stored In The Created SQLite3 Database.
+"""
+
 import Scrapper
 from Scrapper import IEM_TAGS
 import sqlite3
@@ -9,7 +16,6 @@ from sys import exit
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-
 
 def main():
     dire = input("Directory Path : ").strip()
@@ -181,6 +187,7 @@ def insert_data(cursor, data, job_queue, thread_count):
 
 
 def db_schema(cursor):
+    # Schema For The SQLite3 Database
 
     # Main Table
     cursor.execute("""
@@ -243,6 +250,10 @@ def fill_tags_table(cursor):
 
 
 def check(db_name):
+    """
+    Checks If There Is Already A File In The Directory With The Name 'db_name',
+    Then Updates/Replaces The Database Or Exits The Program As Prompted By The User.
+    """
     for file in Path(Path.cwd()).iterdir():
         if file.name == db_name:
             logger.warning(f"There Already Exists a '{db_name}' File.")

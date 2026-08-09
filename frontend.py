@@ -6,11 +6,14 @@ It Also Offers Another Section Where One Can Compare Upto 3 Different IEMs By Ov
 And Arranging Their Specifications In A Tabular Form.
 """
 
-import streamlit as st
 import sqlite3
+
 import pandas as pd
-from reference_data import HARMAN_2019_RAW, HARMAN_2019_FREQUENCY
 import plotly.express as px
+import streamlit as st
+
+from reference_data import HARMAN_2019_RAW, HARMAN_2019_FREQUENCY
+
 
 def main():
     st.title("Sonic Vault")
@@ -24,6 +27,7 @@ def main():
 
     with iem_compare:
         compare_menu(connection, lookup_dict, names)
+
 
 def compare_menu(connection, lookup_dict, names):
     """
@@ -118,8 +122,8 @@ def format_query(brand, c_type, l_price, u_price, selected_tags, lookup_tags):
     query = "SELECT main_id FROM details WHERE " + " AND ".join(temp_query)
     return query
 
-PAGE_SIZE = 5
 
+PAGE_SIZE = 5
 def list_iem(iems, connection):
     """
     This Helps Generate Page Display When The Number Of IEMs To Display Exceeds 5,
@@ -146,6 +150,7 @@ def list_iem(iems, connection):
             if st.button(">", disabled=(page >= total_pages - 1)):
                 st.session_state.page = page + 1
                 st.rerun()
+
 
 def iem_display(idx, connection):
     # It Help Generates A Display Card For Displaying IEM Details And Frequency Graph
@@ -193,6 +198,7 @@ def plot_response_graphs(connection, main_ids):
     fig.update_yaxes(range=[-max_abs, max_abs])
     st.plotly_chart(fig, use_container_width=True)
 
+
 @st.cache_data
 def load_measurement(_conn, main_id):
     # Returns The Frequency Response Data Of The IEM In A Pandas DataFrame
@@ -204,6 +210,7 @@ def load_measurement(_conn, main_id):
     values = [float(v) for v in value.split(",")]
     return pd.DataFrame({"Frequency" : freqs, "Values" : values})
 
+
 @st.cache_resource
 def db_connection():
     # Caching The Connection To Prevent Opening of Different Connections on Each New Query
@@ -213,6 +220,7 @@ def db_connection():
     except sqlite3.OperationalError:
         st.toast("❌ Database Not Found !")
         st.stop()
+
 
 @st.cache_data
 def load_iem_data(_conn):
@@ -231,15 +239,18 @@ def load_iem_data(_conn):
     tags = {tag: tag_id for tag_id, tag in tags_data}
     return lookup_dict, names, brands, tags
 
+
 @st.cache_data
 def query_search(query, _conn):
     cursor = _conn.cursor()
     return cursor.execute(query).fetchone()
 
+
 @st.cache_data
 def query_search_all(query, _conn):
     cursor = _conn.cursor()
     return cursor.execute(query).fetchall()
+
 
 if __name__ == "__main__":
     main()

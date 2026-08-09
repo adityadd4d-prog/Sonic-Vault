@@ -1,14 +1,16 @@
 """
 A Module Containing Classes For Scrapper And Data Fetcher Worker Thread
 """
+
+import csv
+import logging
+import time
+from pathlib import Path
+
 import httpx
 from google import genai
 from google.genai import errors, types
-import time
 from pydantic import BaseModel, Field
-from pathlib import Path
-import csv
-import logging
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -200,6 +202,7 @@ class DetailFetcherThread:
             try_count += 1
         logger.error("Exhausted all Retries Without a Proper Response.")
         return None
+
 
 class CsvScrapper:
     """
