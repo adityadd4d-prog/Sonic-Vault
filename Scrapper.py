@@ -1,3 +1,6 @@
+"""
+A Module Containing Classes For Scrapper And Data Fetcher Worker Thread
+"""
 import httpx
 from google import genai
 from google.genai import errors, types
@@ -10,6 +13,7 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+# Valid Tags That Are Accpeted By The Program
 IEM_TAGS = (
         "Dynamic Driver", "Balanced Armature", "Planar Magnetic", "Electrostatic", "Hybrid", "Tribrid",
         "Neutral", "Warm", "Bright", "Dark", "V Shaped", "U Shaped", "Basshead", "Mid Forward", "Harman Target",
@@ -18,7 +22,12 @@ IEM_TAGS = (
         "Quadbrid", "Pentabrid", "Hexabrid"
     )
 
+
 class IemDetails(BaseModel):
+    """
+    Pydantic Model Describing What Type Of Contents A Model Of IEM Should Have.
+    Used To Get Structured Response From The Gemini Model.
+    """
     search_name: str = Field(description="The Searched iem to which this details belong. Do not make any change to the searched keyword in any form. Anything Written in parentheses should be retained as is.")
     brand: str = Field(description="The Name of the Brand to which the IEM belongs. Keep the Brand name the same with which the company is Registered")
     name: str = Field(description="The Model name of the iem")
@@ -37,7 +46,16 @@ class IemResponse(BaseModel):
 
 
 class DetailFetcherThread:
+    """
+    The Threads That Are Responsible For Fetching Details Of IEM From Job Queue.
+    """
     def __init__(self, api_key, job_queue, detail_queue):
+        """
+        Intialize The Class Then Just Start The Thread.
+        :param api_key: API key from Google Studio AI
+        :param job_queue: The Queue From Where The Thread Fetches The Jobs
+        :param detail_queue: The Queue Where The Thread Puts Data After Processing It
+        """
         self.try_cnt = 0
         self.MAX_TRIES = 15
         self.FAIL_THRESHOLD = 7
@@ -115,6 +133,9 @@ class DetailFetcherThread:
                 raise ValueError
 
     def live_detail_fetcher(self):
+        """
+        This Function Is The One That Should Be Run As a Thread. Can Be Run Multiple Times To Run Multiple Instances.
+        """
         while True:
             task = self.job_queue.get()
             if task is None:
@@ -142,6 +163,13 @@ class DetailFetcherThread:
             self.detail_queue.put((job_no, job, detail['results']))
 
     def api_multi_try(self, model, query, config):
+        """
+        This Handles The Retry Mechanism Of The Class, It Uses Exponential Backoff For The Retry Mechanism.
+        :param model: The Model Name That Is To Be Used For Making Calls
+        :param query: Query To Be Done
+        :param config: The GenerateContentConfig That Is To Be Used To Give Instructions.
+        :return: Returns None If It Fails To Get A Valid Response Even After Multiple Retries Else Returns The Response.
+        """
         try_count = 0
         fail_count = 0
         while try_count < self.MAX_TRIES:
@@ -174,7 +202,13 @@ class DetailFetcherThread:
         return None
 
 class CsvScrapper:
+    """
+    This Class Is Responsible For Scraping The Directory For CSV Files And Scrapping The Data In Them.
+    """
     def __init__(self, dire):
+        """
+        :param dire: The Directory On Which The Scrapping Is To Be Performed.
+        """
         self.dire = dire
 
     def __str__(self):
@@ -192,6 +226,10 @@ class CsvScrapper:
             raise ValueError
 
     def scrap(self):
+        """
+        The Main Function That Is Responsible For Scraping The Directory.
+        :return: Returns A Dict Containing The Scrapped Data, Failed Files and The No. Of Loaded Files.
+        """
         csv_data = []
         fails = []
         loaded = 0
