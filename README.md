@@ -1,6 +1,8 @@
 # Sonic Vault
 
-#### Video Demo: `<URL>`
+#### Video Demo: `https://youtu.be/XQ1_u9Y5LAo?feature=shared`
+
+#### Live Site: `https://sonic-vault.streamlit.app/`
 
 #### Description:
 Sonic Vault is a tool for creating a SQLite database of IEMs
