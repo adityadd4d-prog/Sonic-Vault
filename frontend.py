@@ -12,7 +12,7 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-from reference_data import HARMAN_2019_RAW, HARMAN_2019_FREQUENCY
+from reference_data import HARMAN_2019_RAW, FREQUENCY
 
 
 def main():
