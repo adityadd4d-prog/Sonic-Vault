@@ -100,7 +100,7 @@ class DetailFetcherThread:
         self._client = genai.Client(api_key=api_key)
         try:
             _ = self._client.models.generate_content(
-                model="gemini-3.1-flash-lite",
+                model="gemini-3.5-flash-lite",
                 contents="Hello"
             )
             self._api_key = api_key
@@ -152,7 +152,7 @@ class DetailFetcherThread:
                 continue
             json_query = f"Take this Information : '{response.text}' and parse it to proper JSON as Per the Given Schema"
             logger.info(f"PARSING | Job {job_no} : {list(job.keys())}")
-            json_detail = self.api_multi_try("gemini-3.1-flash-lite", json_query, self._json_parser_config)
+            json_detail = self.api_multi_try("gemini-3.5-flash-lite", json_query, self._json_parser_config)
             if json_detail is None:
                 logger.error(f"PARSING FAILED | Job {job_no} : {list(job.keys())}")
                 continue

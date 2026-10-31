@@ -226,3 +226,4 @@ pyproject.toml
 uv.lock
 API_KEYS
 
+API_KEYS.txt
