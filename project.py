@@ -196,11 +196,6 @@ def start_job_consumer_threads(api_keys, job_queue, response_queue):
         thread = threading.Thread(target=detail_fetcher.live_detail_fetcher, name=thread_name)
         threads_tracker.append(thread)
         thread.start()
-
-    # Putting Poison Pills
-    for _ in range(len(threads_tracker)):
-        job_queue.put(None)
-
     return threads_tracker
 
 
@@ -245,6 +240,9 @@ def insert_data(cursor, data, job_queue, thread_count):
         job_queue.put((job, job_no))
         logger.debug(f"Job {job_no} Queued : {list(job.keys())}")
 
+    # Putting Poison Pills
+    for _ in range(thread_count):
+        job_queue.put(None)
 
 
 def db_schema(cursor):

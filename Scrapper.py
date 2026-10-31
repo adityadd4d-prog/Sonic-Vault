@@ -104,9 +104,9 @@ class DetailFetcherThread:
                 contents="Hello"
             )
             self._api_key = api_key
-            logger.info("API Key Validated Successfully.")
         except errors.APIError as e:
             if e.code in [401, 403]:
+                self.detail_queue.put(None)
                 logger.error("Given API Key is Invalid")
                 logger.critical("Stoping this Thread.")
                 raise ValueError
@@ -114,6 +114,7 @@ class DetailFetcherThread:
                 logger.debug("Key Is Valid but Rate Limited. Trying Again")
                 time.sleep(min(2 ** self.try_cnt, 60))
                 if self.try_cnt == self.MAX_TRIES:
+                    self.detail_queue.put(None)
                     logger.error("API Key is rate limited (429), even after multiple retries.")
                     logger.critical("Stoping this Thread.")
                     raise ValueError
@@ -123,12 +124,14 @@ class DetailFetcherThread:
                 logger.debug(f"Google is Sending {e.code}. Trying Again.")
                 time.sleep(min( 2 ** self.try_cnt, 60))
                 if self.try_cnt == self.MAX_TRIES:
+                    self.detail_queue.put(None)
                     logger.warning(f"Google Is Sending 5XX code, Even after Multiple Retries.")
                     logger.critical("Stoping This Thread.")
                     raise ValueError
                 self.try_cnt += 1
                 self.api_key = api_key
             else:
+                self.detail_queue.put(None)
                 logger.exception("Unhandled Exception Thrown From API")
                 logger.critical("Stoping This Thread")
                 raise ValueError
