@@ -14,6 +14,7 @@ from sys import exit
 
 import Scrapper
 from Scrapper import IEM_TAGS
+from reference_data import FREQUENCY, COLUMNS
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -24,7 +25,12 @@ def main():
     setup_loggers()
 
     logger.info("Reading CSV ...")
-    reader = Scrapper.CsvScrapper(dire)
+    try:
+        reader = Scrapper.CsvScrapper(dire)
+    except ValueError:
+        logger.critical("Given Directory is Invalid!")
+        exit()
+
     data = reader.scrap()
     logger.info(f"Finished Reading. Loaded {data['loaded']} CSV Files. Failed To Load {len(data['fails'])} Files.")
 
@@ -87,8 +93,7 @@ def get_api_keys():
     """
     :return: A Tuple Containing All The API Keys Found In The File.
     """
-    flag = True
-    while flag:
+    while True:
         try:
             file_name = input("\nEnter File Name In Which API Keys Are Stored : ").strip()
             logger.info(f"Reading {file_name} ...")
@@ -200,7 +205,10 @@ def insert_data(cursor, data, job_queue, thread_count):
     It Also Batches The Names Of the IEMs In 5 And Inserts Them Into The Job Queue.
     It Also Inserts The Poison Pills According To The Number Of Threads Spawned.
     """
-    measurements_query = "INSERT OR IGNORE INTO measurements (main_id, freqs, value) VALUES (?, ?, ?)"
+
+    freqs = ", ".join(COLUMNS)
+    marks = ", ".join("?" * len(COLUMNS))
+    measurements_query = f"INSERT OR IGNORE INTO measurements (main_id, {freqs}) VALUES (?, {marks})"
     main_query = "INSERT INTO main (name) VALUES (?)"
 
     job = {}
@@ -209,9 +217,6 @@ def insert_data(cursor, data, job_queue, thread_count):
     # Writing The Scraped Data To The Database
     for item in data["dataSet"]:
         name, measurements = item
-        freqs, values = measurements
-        freqs_str = ",".join(map(str, freqs))
-        values_str = ",".join(map(str, values))
 
         try:
             cursor.execute(main_query, (name,))
@@ -223,7 +228,7 @@ def insert_data(cursor, data, job_queue, thread_count):
         if not detail_id:
             job[name.lower()] = main_id
 
-        cursor.execute(measurements_query, (main_id, freqs_str, values_str))
+        cursor.execute(measurements_query, (main_id, *measurements))
 
         # Batching Together IEM Names Into 5
         if len(job) == 5: # Change The Number Here To Increase/Decrease The Batch Volume
@@ -269,13 +274,14 @@ def db_schema(cursor):
                 )
               """)
 
+    freq_cols = ",\n".join(f"{c} REAL" for c in COLUMNS)
+
     # Measurement Table
-    cursor.execute("""
+    cursor.execute(f"""
                 CREATE TABLE IF NOT EXISTS measurements ( 
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     main_id INTEGER UNIQUE NOT NULL,
-                    freqs TEXT,
-                    value TEXT,
+                    {freq_cols} ,
                     FOREIGN KEY (main_id) REFERENCES main(id)
                 )
             """)

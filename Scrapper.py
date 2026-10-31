@@ -12,10 +12,12 @@ from google import genai
 from google.genai import errors, types
 from pydantic import BaseModel, Field
 
+from reference_data import FREQUENCY
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-# Valid Tags That Are Accpeted By The Program
+# Valid Tags That Are Accepted By The Program
 IEM_TAGS = (
         "Dynamic Driver", "Balanced Armature", "Planar Magnetic", "Electrostatic", "Hybrid", "Tribrid",
         "Neutral", "Warm", "Bright", "Dark", "V Shaped", "U Shaped", "Basshead", "Mid Forward", "Harman Target",
@@ -61,9 +63,9 @@ class DetailFetcherThread:
         self.try_cnt = 0
         self.MAX_TRIES = 15
         self.FAIL_THRESHOLD = 7
-        self.api_key =  api_key
         self.job_queue = job_queue
         self.detail_queue = detail_queue
+        self.api_key =  api_key
         self._json_parser_config = types.GenerateContentConfig(
             response_mime_type="application/json",
             response_json_schema=IemResponse.model_json_schema(),
@@ -239,8 +241,12 @@ class CsvScrapper:
         for file in Path(self.dire).rglob("*.csv"):
             try:
                 logger.debug(f"READ CSV : {file}")
-                data = self.csv_unpacker(file)
-                csv_data.append((" ".join(file.stem.split()), data))
+                measurements = self.csv_unpacker(file)
+                if measurements is None:
+                    logger.info(f"{file} Does Not Match Defined Format.")
+                    fails.append(file)
+                    continue
+                csv_data.append((" ".join(file.stem.split()), measurements))
                 loaded += 1
             except (FileNotFoundError, PermissionError, ValueError):
                 fails.append(file)
@@ -256,6 +262,9 @@ class CsvScrapper:
             header = []
             data = []
             for line in reader:
-                header.append(line[0])
-                data.append(line[1])
-            return tuple(header), tuple(data)
+                header.append(float(line[0]))
+                data.append(float(line[1]))
+            if tuple(header) == FREQUENCY:
+                return tuple(data)
+            else:
+                return None
