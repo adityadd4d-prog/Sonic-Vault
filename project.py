@@ -150,7 +150,7 @@ def sqlite3_thread(db_name, data, job_queue, response_queue, thread_count):
 
             job_no, job, job_details = response
 
-            query = "INSERT INTO details (main_id, brand, name, driver, device_type, is_wireless, link, anc, freq_range, impedance, connector_type, signature, mrp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            query = "INSERT INTO details (main_id, brand, name, driver, device_type, is_wireless, link, anc, freq_range, impedance, connector_type, signature, mrp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
             logger.info(f"WRITING | Job {job_no} : {list(job.keys())}")
 
             for iem in job_details:
@@ -265,9 +265,9 @@ def db_schema(cursor):
                     name TEXT,
                     driver TEXT,
                     device_type TEXT,
-                    is_wireless INTEGER NOT NULL DEFAULT 0 CHECK (is_valid IN (0, 1)),
+                    is_wireless INTEGER NOT NULL DEFAULT 0 CHECK (is_wireless IN (0, 1)),
                     link TEXT,
-                    is_anc TEXT,   
+                    anc TEXT,   
                     freq_range TEXT,
                     impedance TEXT,
                     connector_type TEXT,
