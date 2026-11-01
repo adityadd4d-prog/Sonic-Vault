@@ -22,8 +22,8 @@ IEM_TAGS = (
         "Dynamic Driver", "Balanced Armature", "Planar Magnetic", "Electrostatic", "Hybrid", "Tribrid",
         "Neutral", "Warm", "Bright", "Dark", "V Shaped", "U Shaped", "Basshead", "Mid Forward", "Harman Target",
         "Stage Monitor", "Studio Reference", "Casual Listening", "Gaming", "Sports", "Sleep Friendly", "ANC",
-        "Detachable Cable", "MMCX", "2 Pin", "Wireless TWS", "Balanced Cable Included", "Tuning Switches",
-        "Quadbrid", "Pentabrid", "Hexabrid", "On-Ear", "In-Ear", "Headphones", "Over-Ears"
+        "Detachable Cable", "MMCX", "2 Pin", "Wireless", "Balanced Cable Included", "Tuning Switches",
+        "Quadbrid", "Pentabrid", "Hexabrid", "On-Ear", "In-Ear", "Headphones", "Over-Ear", "Earbud"
     )
 
 
@@ -36,7 +36,7 @@ class IemDetails(BaseModel):
     brand: str = Field(description="The Name of the Brand to which the IEM belongs. Keep the Brand name the same with which the company is Registered")
     name: str = Field(description="The Model name of the iem")
     driver: str = Field(description="The Driver Setup of the Iem. Example : 1DD + 2BA, 2DD + 2BA")
-    device_type: str = Field(description="The Type Of Device. Must Be One Of : In-Ear, On-Ear, Over-Ear Or Earbuds")
+    device_type: str = Field(description="The Type Of Device. Must Be One Of : In-Ear, On-Ear, Over-Ear Or Earbud")
     is_wireless: bool = Field(description="True If The Device Supports Wireless Mode.")
     link: str = Field(description="Link To Official Page Of The Device By The Brand.")
     anc: str = Field(description="Tell Either ANC is available or NOT and if available what is the DB level")
@@ -106,7 +106,7 @@ class DetailFetcherThread:
         self._client = genai.Client(api_key=api_key)
         try:
             _ = self._client.models.generate_content(
-                model="gemini-3.5-flash-lite",
+                model="gemini-3.1-flash-lite",
                 contents="Hello"
             )
             self._api_key = api_key
@@ -158,7 +158,7 @@ class DetailFetcherThread:
                 continue
             json_query = f"Take this Information : '{response.text}' and parse it to proper JSON as Per the Given Schema"
             logger.info(f"PARSING | Job {job_no} : {list(job.keys())}")
-            json_detail = self.api_multi_try("gemini-3.5-flash-lite", json_query, self._json_parser_config)
+            json_detail = self.api_multi_try("gemini-3.1-flash-lite", json_query, self._json_parser_config)
             if json_detail is None:
                 logger.error(f"PARSING FAILED | Job {job_no} : {list(job.keys())}")
                 continue
@@ -245,8 +245,8 @@ class CsvScrapper:
                 logger.debug(f"READ CSV : {file}")
                 measurements = self.csv_unpacker(file)
                 if measurements is None:
-                    logger.info(f"{file} Does Not Match Defined Format.")
-                    fails.append(file)
+                    logger.info(f"{file.name} Does Not Match Defined Format.")
+                    fails.append(file.stem)
                     continue
                 csv_data.append((" ".join(file.stem.split()), measurements))
                 loaded += 1
