@@ -23,7 +23,7 @@ IEM_TAGS = (
         "Neutral", "Warm", "Bright", "Dark", "V Shaped", "U Shaped", "Basshead", "Mid Forward", "Harman Target",
         "Stage Monitor", "Studio Reference", "Casual Listening", "Gaming", "Sports", "Sleep Friendly", "ANC",
         "Detachable Cable", "MMCX", "2 Pin", "Wireless TWS", "Balanced Cable Included", "Tuning Switches",
-        "Quadbrid", "Pentabrid", "Hexabrid"
+        "Quadbrid", "Pentabrid", "Hexabrid", "On-Ear", "In-Ear", "Headphones", "Over-Ears"
     )
 
 
@@ -36,6 +36,9 @@ class IemDetails(BaseModel):
     brand: str = Field(description="The Name of the Brand to which the IEM belongs. Keep the Brand name the same with which the company is Registered")
     name: str = Field(description="The Model name of the iem")
     driver: str = Field(description="The Driver Setup of the Iem. Example : 1DD + 2BA, 2DD + 2BA")
+    device_type: str = Field(description="The Type Of Device. Must Be One Of : In-Ear, On-Ear, Over-Ear Or Earbuds")
+    is_wireless: bool = Field(description="True If The Device Supports Wireless Mode.")
+    link: str = Field(description="Link To Official Page Of The Device By The Brand.")
     anc: str = Field(description="Tell Either ANC is available or NOT and if available what is the DB level")
     freq_range: str = Field(description="The frequency range upto which the iem can produce sound. Example : 20Hz - 20KHz, 20Hz - 40KHz")
     impedance: str = Field(description="The impedance of the iem in ohms, must include the word ohms")
@@ -80,7 +83,10 @@ class DetailFetcherThread:
              search name i.e. the exact name of the IEM with which it is searched for, there should be no change in it and anything written in parentheses should be retained as is,
              brand name with which the company is registered,
              model name of the iem,
-             driver configuration of the iem, 
+             driver configuration of the iem,
+             The Type Of Device. Must Be One Of : In-Ear, On-Ear, Over-Ear Or Earbuds,
+             whether it supports wireless mode or not,
+             link to visit the official page of the device hosted by the brand,
              the frequency range upto which it can produce sound,
              impedance of the iem, must be in ohms and include the word 'ohm',
              connector type of the iem,
