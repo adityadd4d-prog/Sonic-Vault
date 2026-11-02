@@ -12,7 +12,7 @@ from google import genai
 from google.genai import errors, types
 from pydantic import BaseModel, Field
 
-from reference_data import FREQUENCY
+from constants import FREQUENCY
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -152,7 +152,7 @@ class DetailFetcherThread:
             job, job_no = task
             job_query = f"Find Details about this IEM as per the system instruction using search grounding : '{list(job.keys())}'"
             logger.info(f"SENDING | Job {job_no} : {list(job.keys())}")
-            response = self.api_multi_try("gemma-4-31b-it", job_query, self._detail_fetcher_config)
+            response = self.api_multi_try("gemma-4-26b-a4b-it", job_query, self._detail_fetcher_config)
             if response is None:
                 logger.error(f"INVALID RESPONSE | Job {job_no} : {list(job.keys())}")
                 continue
@@ -246,12 +246,12 @@ class CsvScrapper:
                 measurements = self.csv_unpacker(file)
                 if measurements is None:
                     logger.info(f"{file.name} Does Not Match Defined Format.")
-                    fails.append(file.stem)
+                    fails.append(file.name)
                     continue
                 csv_data.append((" ".join(file.stem.split()), measurements))
                 loaded += 1
             except (FileNotFoundError, PermissionError, ValueError):
-                fails.append(file)
+                fails.append(file.name)
         data = {"dataSet" : csv_data,
                 "fails" : fails,
                 "loaded" : loaded}

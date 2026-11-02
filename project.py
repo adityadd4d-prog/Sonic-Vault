@@ -14,7 +14,7 @@ from sys import exit
 
 import Scrapper
 from Scrapper import IEM_TAGS
-from reference_data import FREQUENCY, COLUMNS
+from constants import COLUMNS
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -183,7 +183,7 @@ def sqlite3_thread(db_name, data, job_queue, response_queue, thread_count):
 def start_job_consumer_threads(api_keys, job_queue, response_queue):
     """
     This Function Spawns A Data Fetcher Worker Thread On Per API Key
-    :param api_keys: A List Of All Avialable API Keys
+    :param api_keys: A List Of All Available API Keys
     :return: A List Of Object To Access Each thread
     """
     threads_tracker = []
