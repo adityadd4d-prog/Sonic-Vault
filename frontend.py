@@ -12,12 +12,14 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-from reference_data import HARMAN_2019_RAW, FREQUENCY
+from constants import HARMAN_2019_RAW, FREQUENCY
 
+
+PAGE_SIZE = 5
 
 def main():
     st.title("Sonic Vault")
-    search, iem_compare = st.tabs(["Search", "Compare"])
+    search, iem_compare, simi = st.tabs(["Search", "Compare", "Similarity Search"])
 
     connection = db_connection()
     lookup_dict, names, brands, tags = load_iem_data(connection)
@@ -33,14 +35,14 @@ def compare_menu(connection, lookup_dict, names):
     """
     This Tab Is Responsible For Handling The Comparing Part Of The Program And Helps Compare Upto 3 IEMs.
     """
-    st.header("Compare")
+    st.header("Compare", anchor=False)
     st.text("Select IEMs To Compare : ")
     iems = st.multiselect("Select IEMs To Compare : ", names, label_visibility="collapsed", max_selections=3) # Change max_selection to compare More IEMs
     if len(iems) != 0:
         with st.container(border=True):
             plot_response_graphs(connection,[lookup_dict[iem] for iem in iems])
-            labels = ["Brand", "Name", "Drivers", "ANC", "Frequency Response", "Impedance",
-                      "Connector Type", "Sound Signature", "Maximum Retail Price"]
+            labels = ["Brand", "Name", "Drivers", "Device Type", "Wireless Available", "ANC", "Frequency Response", "Impedance",
+                  "Connector Type", "Sound Signature", "Maximum Retail Price", "Link"]
             compare_data = {"Specifications" : labels}
             measurements_data = {}
             for iem in iems:
@@ -48,9 +50,9 @@ def compare_menu(connection, lookup_dict, names):
                 if details is None:
                     st.warning(f"Details not found for {iem}, skipping.")
                     continue
-                measurements = query_search(f"SELECT freqs, value FROM measurements WHERE main_id = {lookup_dict[iem]}", connection)
-                compare_data[iem] = [*details[2:10] , f"{details[10]} USD"]
-                measurements_data[iem] = measurements
+                measurements = query_search(f"SELECT * FROM measurements WHERE main_id = {lookup_dict[iem]}", connection)
+                compare_data[iem] = [*details[2:7], *details[8:13], f"₹ {details[13]}", details[7]]
+                measurements_data[iem] = measurements[2:]
             compare_df = pd.DataFrame(compare_data)
             st.table(compare_df)
 
@@ -59,7 +61,7 @@ def search_menu(connection, lookup_dicts, names, brands, tags):
     """
     This Tab Is Responsible For Handling The Search Part of The Program and Help Look Through Various IEM Details.
     """
-    st.header("Search")
+    st.header("Search", anchor=False)
     st.text("Which IEM Are You Looking For ?")
     
     if st.checkbox("Advanced Filter"):
@@ -123,7 +125,6 @@ def format_query(brand, c_type, l_price, u_price, selected_tags, lookup_tags):
     return query
 
 
-PAGE_SIZE = 5
 def list_iem(iems, connection):
     """
     This Helps Generate Page Display When The Number Of IEMs To Display Exceeds 5.
@@ -159,11 +160,11 @@ def iem_display(idx, connection):
         st.error("IEM Details Not Found!")
         return
     with st.container(border=True):
-        st.subheader(f"{details[2]} {details[3]}")
+        st.subheader(f"[{details[2] + " " + details[3]}]({details[7]})", anchor=False)
         plot_response_graphs(connection, list([idx]))
-        labels = ["Brand", "Name", "Drivers", "ANC", "Frequency Response", "Impedance",
+        labels = ["Brand", "Name", "Drivers", "Device Type", "Wireless Available", "ANC", "Frequency Response", "Impedance",
                   "Connector Type", "Sound Signature", "Maximum Retail Price"]
-        values = [*details[2:10] , f"{details[10]} USD"]
+        values = [*details[2:7], *details[8:13], f"₹ {details[13]}"]
         spec_df = pd.DataFrame({"Specification": labels, "Value": values})
         st.table(spec_df)
 
@@ -171,7 +172,7 @@ def iem_display(idx, connection):
 def plot_response_graphs(connection, main_ids):
     # Handles The Plotting of Logarithmic Graphs For The Frequency Response Graphs
     target_df = pd.DataFrame({
-        "Frequency": HARMAN_2019_FREQUENCY,
+        "Frequency": FREQUENCY,
         "Values": HARMAN_2019_RAW,
         "curve": "Harman Target 2019",
     })
@@ -202,13 +203,10 @@ def plot_response_graphs(connection, main_ids):
 @st.cache_data
 def load_measurement(_conn, main_id):
     # Returns The Frequency Response Data Of The IEM In A Pandas DataFrame
-    result = _conn.execute(f"SELECT freqs, value FROM measurements WHERE main_id = ?", (main_id,)).fetchone()
+    result = _conn.execute(f"SELECT * FROM measurements WHERE main_id = ?", (main_id,)).fetchone()
     if result is None:
         return None
-    freq, value = result
-    freqs = [float(f) for f in freq.split(",")]
-    values = [float(v) for v in value.split(",")]
-    return pd.DataFrame({"Frequency" : freqs, "Values" : values})
+    return pd.DataFrame({"Frequency" : FREQUENCY, "Values" : result[2:]})
 
 
 @st.cache_resource
