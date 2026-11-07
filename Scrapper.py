@@ -23,12 +23,12 @@ IEM_TAGS = (
         "Neutral", "Warm", "Bright", "Dark", "V Shaped", "U Shaped", "Basshead", "Mid Forward", "Harman Target",
         "Stage Monitor", "Studio Reference", "Casual Listening", "Gaming", "Sports", "Sleep Friendly", "ANC",
         "Detachable Cable", "MMCX", "2 Pin", "Wireless", "Balanced Cable Included", "Tuning Switches",
-        "Quadbrid", "Pentabrid", "Hexabrid", "On-Ear", "In-Ear", "Headphones", "Over-Ear", "Earbud"
+        "Quadbrid", "Pentabrid", "Hexabrid", "Earbud", "In Ear"
     )
 
-CURATOR_SITES = (
-        "Linsoul", "HiFigo", "Shenzenaudio", "Headphonezone", "TheAudioStore", "Amazon", "Flipkart"
-    )
+# # CURATOR_SITES = (
+#         "Linsoul", "HiFigo", "Shenzenaudio", "Headphonezone", "TheAudioStore", "Amazon", "Flipkart"
+#     )
 
 
 class IemDetails(BaseModel):
@@ -40,13 +40,13 @@ class IemDetails(BaseModel):
     brand: str = Field(description="The Name of the Brand to which the IEM belongs. Keep the Brand name the same with which the company is Registered")
     name: str = Field(description="The Model name of the iem")
     driver: str = Field(description="The Driver Setup of the Iem. Example : 1DD + 2BA, 2DD + 2BA")
-    device_type: str = Field(description="The Type Of Device. Must Be One Of : In-Ear, On-Ear, Over-Ear Or Earbud")
+    device_type: str = Field(description="The Type Of Device. Must Be One Of : In Ear or Earbud")
     is_wireless: str = Field(description="Whether the Device Supports Wireless Mode or Not. If Available Also Include the mode of wireless and their version Number")
-    link: str = Field(description="Link To Website that Sells This IEM. Only Store One Link")
+    link: str = Field(description="Website Link To Official Product Page.")
     anc: str = Field(description="Tell Either ANC is available or Not Available and if available what is the DB level")
     freq_range: str = Field(description="The frequency range upto which the iem can produce sound. Example : 20Hz - 20KHz, 20Hz - 40KHz")
     impedance: str = Field(description="The impedance of the iem in ohms, must include the word ohms")
-    connector_type: str = Field(description="The Type of connector used in the iem, Must be one of : 0.75mm 2Pin, 0.78mm 2Pin or MMCX")
+    connector_type: str = Field(description="The Type of connector used in the iem, Must be one of : 0.75mm 2Pin, 0.78mm 2Pin, MMCX or N/A in Case Of Earbud")
     signature: str = Field(description="One Line Description about how the iem sounds")
     mrp: float = Field(description="The Retail Price set by the manufacturer in Rupees. Don't include The word Rupees keep it strictly in float only, price can't be zero")
     tags: str = Field(description=f"Use as many Suitable tags from the given list as applicable : {IEM_TAGS}")
@@ -88,15 +88,15 @@ class DetailFetcherThread:
              brand name with which the company is registered,
              model name of the iem,
              driver configuration of the iem,
-             The Type Of Device. Must Be One Of : In-Ear, On-Ear, Over-Ear Or Earbuds,
+             The Type Of Device. Must Be One Of : In Ear Or Earbud,
              whether it supports wireless mode is available or not, if available also include the mode of wireless with version,
-             link to the purchase page of the device (Prefer Sites Such as {CURATOR_SITES} following there order as listed),
+             link to the official product page of the device,
              ANC is whether Present or Not, and if present what is the db level it works at,
              the frequency range upto which it can produce sound,
              impedance of the iem, must be in ohms and include the word 'ohm',
-             connector type of the iem,
+             connector type of the iem, Must be one of : 0.75mm 2Pin, 0.78mm 2Pin, MMCX or N/A in Case Of Earbud",
              summary about the sound signature of the iem,
-             the maximum retail price set by the manufacturer : it can not be zero, if found to zero search for it again till a value is found and
+             the maximum retail price set by the manufacturer in Indian Rupees: it can not be zero, if found to zero search for it again till a value is found and
              use the following tags as appropriate separated by commas : {IEM_TAGS}
              """
         )

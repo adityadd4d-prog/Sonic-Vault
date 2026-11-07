@@ -19,7 +19,7 @@ PAGE_SIZE = 5
 
 def main():
     st.title("Sonic Vault")
-    search, iem_compare, simi = st.tabs(["Search", "Compare", "Similarity Search"])
+    search, iem_compare, similarity_search = st.tabs(["Search", "Compare", "Similarity Search"])
 
     connection = db_connection()
     lookup_dict, names, brands, tags = load_iem_data(connection)
@@ -29,6 +29,70 @@ def main():
 
     with iem_compare:
         compare_menu(connection, lookup_dict, names)
+
+    with similarity_search:
+        similarity_search_menu(connection, names, lookup_dict)
+
+def similarity_search_menu(connection, names, lookup_dict):
+    st.header("Similarity Search")
+    st.text("Perform Similarity Search By")
+    col1, col2 = st.columns([0.05, 0.95], vertical_alignment="center")
+    with col1:
+        st.session_state.switch = st.toggle("", value=False, label_visibility="collapsed")
+    with col2:
+        if st.session_state.switch:
+            st.markdown("**Sound Signature**")
+        else:
+            st.markdown("**IEM**")
+    if st.session_state.switch:
+        with st.container(border=True):
+            col3, col4, col5 = st.columns(3)
+            with col3:
+                st.markdown("**BASS**")
+                st.session_state.Bass = st.toggle("Advanced Options", value=False, key="t1")
+                if st.session_state.Bass:
+                    with st.container(border=True):
+                        sub_bass = st.slider("Sub Bass", min_value=0, max_value=10)
+                        mid_bass = st.slider("Mid Bass", min_value=0, max_value=10)
+                        upper_bass = st.slider("Upper Bass", min_value=0, max_value=10)
+                else:
+                    with st.container(border=True):
+                        bass = st.slider("Bass", min_value=0, max_value=10)
+            with col4:
+                st.text("MIDS")
+                st.session_state.Mids = st.toggle("Advanced Options", value=False, key="t2")
+                if st.session_state.Mids:
+                    with st.container(border=True):
+                        lower_mids = st.slider("Lower Mids", min_value=0, max_value=10)
+                        center_mids = st.slider("Center Mids", min_value=0, max_value=10)
+                        upper_mids = st.slider("Upper Mids", min_value=0, max_value=10)
+                else:
+                    with st.container(border=True):
+                        mids = st.slider("Mids", min_value=0, max_value=10)
+
+            with col5:
+                st.text("TREBLE")
+                st.session_state.Treble = st.toggle("Advanced Options", value=False, key="t3")
+                if st.session_state.Treble:
+                    with st.container(border=True):
+                        lower_treble = st.slider("Presence", min_value=0, max_value=10)
+                        mid_treble = st.slider("Brilliance", min_value=0, max_value=10)
+                        upper_treble = st.slider("Air", min_value=0, max_value=10)
+                else:
+                    with st.container(border=True):
+                        treble = st.slider("Treble", min_value=0, max_value=10)
+
+            submitted = st.button("🔍︎ Search", key="b1")
+
+    else:
+        col1, col2 = st.columns([0.7, 0.3])
+        with col1:
+            search_iem = st.selectbox("Select IEM", names, label_visibility="collapsed", index=None)
+        with col2:
+            search = st.button("🔍︎ Search", key="search_similarity")
+        if search and search_iem:
+            iem_display(lookup_dict[search_iem], connection)
+
 
 
 def compare_menu(connection, lookup_dict, names):
@@ -63,8 +127,9 @@ def search_menu(connection, lookup_dicts, names, brands, tags):
     """
     st.header("Search", anchor=False)
     st.text("Which IEM Are You Looking For ?")
-    
-    if st.checkbox("Advanced Filter"):
+
+    st.session_state.advanced = st.toggle("Advanced Filters", value=False)
+    if st.session_state.advanced:
         with (st.form("Advanced Filters")):
             selected_tags = st.multiselect("Select Tags :", sorted(tags))
             col1, col2 = st.columns(2)

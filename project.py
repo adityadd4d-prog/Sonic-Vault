@@ -265,7 +265,7 @@ def db_schema(cursor):
                     name TEXT,
                     driver TEXT,
                     device_type TEXT,
-                    is_wireless INTEGER NOT NULL DEFAULT 0 CHECK (is_wireless IN (0, 1)),
+                    is_wireless TEXT,
                     link TEXT,
                     anc TEXT,   
                     freq_range TEXT,
