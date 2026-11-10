@@ -277,7 +277,7 @@ def iem_display(idx, connection):
         st.caption("Details unavailable for this IEM.")
         return
     with st.container(border=True):
-        st.subheader(f"{details[2] + " " + details[3]}", anchor=False)
+        st.subheader(f"{details[2]} {details[3]}", anchor=False)
         plot_response_graphs(connection, list([idx]))
         labels = ["Brand", "Name", "Drivers", "Device Type", "Wireless Available", "ANC", "Frequency Response", "Impedance",
                   "Connector Type", "Sound Signature", "Maximum Retail Price"]
