@@ -34,7 +34,7 @@ def main():
         similarity_search_menu(connection, names, lookup_dict)
 
 def similarity_search_menu(connection, names, lookup_dict):
-    st.header("Similarity Search")
+    st.header("Similarity Search", anchor=False)
     st.text("Perform Similarity Search By")
     col1, col2 = st.columns([0.05, 0.95], vertical_alignment="center")
     with col1:
@@ -108,7 +108,6 @@ def compare_menu(connection, lookup_dict, names):
             labels = ["Brand", "Name", "Drivers", "Device Type", "Wireless Available", "ANC", "Frequency Response", "Impedance",
                   "Connector Type", "Sound Signature", "Maximum Retail Price", "Link"]
             compare_data = {"Specifications" : labels}
-            measurements_data = {}
             for iem in iems:
                 details = query_search(f"SELECT * FROM details WHERE main_id = {lookup_dict[iem]}", connection)
                 if details is None:
@@ -116,7 +115,6 @@ def compare_menu(connection, lookup_dict, names):
                     continue
                 measurements = query_search(f"SELECT * FROM measurements WHERE main_id = {lookup_dict[iem]}", connection)
                 compare_data[iem] = [*details[2:7], *details[8:13], f"₹ {details[13]}", details[7]]
-                measurements_data[iem] = measurements[2:]
             compare_df = pd.DataFrame(compare_data)
             st.table(compare_df)
 

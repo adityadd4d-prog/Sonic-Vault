@@ -135,7 +135,12 @@ def sqlite3_thread(db_name, data, job_queue, response_queue, thread_count):
         logger.info("Database Schema Successfully Commited.")
 
         fill_tags_table(cursor) # Fills The Tags Table
-        insert_data(cursor, data, job_queue, thread_count) # Fills The Main, Scores And Measurement Table And Queues All The Jobs
+        try:
+            insert_data(cursor, data, job_queue, thread_count) # Fills The Main, Scores And Measurement Table And Queues All The Jobs
+        except Exception:
+            logger.exception("Failed While Inserting Data ! ")
+            logger.critical("Terminating Program...")
+            exit()
         logger.info("CSV Data Successfully Inserted.")
         connection.commit()
 
@@ -173,10 +178,19 @@ def sqlite3_thread(db_name, data, job_queue, response_queue, thread_count):
                     continue
 
                 # Writes All Tags Relations
-                try:
-                    cursor.executemany("INSERT OR IGNORE INTO tag_relations (main_id, tag_id) VALUES (?, ?)",[(idx, tags[tag.strip()]) for tag in iem['tags'].split(",")] )
-                except (sqlite3.DatabaseError, KeyError):
-                    logger.exception(f"Failed To Insert Tags | Job {job_no} : {iem['tags']} Not Found In {tags}")
+                valid_tag_ids = []
+                for tag in iem['tags'].split(","):
+                    tag_id = tags.get(tag.strip())
+                    if tag_id is None:
+                        logger.warning(f"Dropping unknown tag {tag.strip()!r} for {iem['brand']} {iem['name']}")
+                        continue
+                    valid_tag_ids.append((idx, tag_id))
+
+                if valid_tag_ids:
+                    try:
+                        cursor.executemany("INSERT OR IGNORE INTO tag_relations (main_id, tag_id) VALUES (?, ?)", valid_tag_ids)
+                    except (sqlite3.DatabaseError, KeyError):
+                        logger.exception(f"Failed To Insert Tags | Job {job_no} : {iem['tags']} Not Found In {tags}")
 
                 # Writes All Specification Details
                 values = (idx, iem['brand'], iem['name'], iem['driver'], iem['device_type'], iem['is_wireless'], iem['link'], iem['anc'], iem['freq_range'], iem['impedance'], iem['connector_type'], iem['signature'], iem['mrp'])
