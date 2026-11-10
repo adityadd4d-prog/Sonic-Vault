@@ -37,7 +37,7 @@ def main():
     data = reader.scrap()
     logger.info(f"Finished Reading. Loaded {data['loaded']} CSV Files. Failed To Load {len(data['fails'])} Files.")
 
-    if data["loaded"] <= 20:
+    if data["loaded"] < 20:
         logger.critical("The Directory Contains Very Few Files (Less Than 20).")
         logger.critical("Terminating Program...")
         exit()

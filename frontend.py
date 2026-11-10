@@ -223,7 +223,10 @@ def iem_display(idx, connection):
         st.error("IEM Details Not Found!")
         return
     with st.container(border=True):
-        st.subheader(f"[{details[2] + " " + details[3]}]({details[7]})", anchor=False)
+        if details[7] == "Not Available":
+            st.subheader(f"[{details[2] + " " + details[3]}]({details[7]})", anchor=False)
+        else:
+            st.subheader(f"{details[2] + " " + details[3]}", anchor=False)
         plot_response_graphs(connection, list([idx]))
         labels = ["Brand", "Name", "Drivers", "Device Type", "Wireless Available", "ANC", "Frequency Response", "Impedance",
                   "Connector Type", "Sound Signature", "Maximum Retail Price"]

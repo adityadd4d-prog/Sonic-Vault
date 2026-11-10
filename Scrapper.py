@@ -38,7 +38,7 @@ class IemDetails(BaseModel):
     driver: str = Field(description="The Driver Setup of the Iem. Example : 1DD + 2BA, 2DD + 2BA")
     device_type: str = Field(description="The Type Of Device. Must Be One Of : In Ear or Earbud")
     is_wireless: str = Field(description="Whether the Device Supports Wireless Mode or Not. If Available Also Include the mode of wireless and their version Number")
-    link: str = Field(description="Website Link To Official Product Page.")
+    link: str = Field(description="Website Link To Official Product Page. If Not Found Put 'Not Available'")
     anc: str = Field(description="Tell Either ANC is available or Not Available and if available what is the DB level")
     freq_range: str = Field(description="The frequency range upto which the iem can produce sound. Example : 20Hz - 20KHz, 20Hz - 40KHz")
     impedance: str = Field(description="The impedance of the iem in ohms, must include the word ohms")
@@ -86,7 +86,7 @@ class DetailFetcherThread:
              driver configuration of the iem,
              The Type Of Device. Must Be One Of : In Ear Or Earbud,
              whether it supports wireless mode is available or not, if available also include the mode of wireless with version,
-             link to the official product page of the device,
+             link to the official product page of the device, if not found return 'Not Available',
              ANC is whether Present or Not, and if present what is the db level it works at,
              the frequency range upto which it can produce sound,
              impedance of the iem, must be in ohms and include the word 'ohm',
@@ -154,7 +154,7 @@ class DetailFetcherThread:
             job_query = f"Find Details about this IEM as per the system instruction using search grounding : '{list(job.keys())}'"
             logger.info(f"SENDING | Job {job_no} : {list(job.keys())}")
             response = self.api_multi_try("gemma-4-26b-a4b-it", job_query, self._detail_fetcher_config)
-            if response is None:
+            if response.text is None:
                 logger.error(f"INVALID RESPONSE | Job {job_no} : {list(job.keys())}")
                 continue
             json_query = f"Take this Information : '{response.text}' and parse it to proper JSON as Per the Given Schema"
