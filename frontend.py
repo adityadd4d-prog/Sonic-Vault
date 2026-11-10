@@ -140,9 +140,9 @@ def search_menu(connection, lookup_dicts, names, brands, tags):
             st.text("Price Range :")
             col3, col4 = st.columns(2)
             with col3:
-                l_price = st.number_input("From :", min_value=0.0, max_value=20000.0, value=0.0, step=1.0)
+                l_price = st.number_input("From :", min_value=0.0, max_value=2000000.0, value=0.0, step=1.0)
             with col4:
-                u_price = st.number_input("To :", min_value=0.0, max_value=20000.0, value=50.0, step=1.0)
+                u_price = st.number_input("To :", min_value=0.0, max_value=2000000.0, value=5000.0, step=1.0)
             submitted = st.form_submit_button("🔍︎ Search")
         if submitted:
             query = format_query(brand, c_type, l_price, u_price, selected_tags, tags)

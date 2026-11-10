@@ -90,7 +90,7 @@ class DetailFetcherThread:
              ANC is whether Present or Not, and if present what is the db level it works at,
              the frequency range upto which it can produce sound,
              impedance of the iem, must be in ohms and include the word 'ohm',
-             connector type of the iem, Must be one of : 0.75mm 2 Pin, 0.78mm 2 Pin, MMCX, Fixed Wire or Wireless,
+             connector type of the iem, Must be one of : 0.75mm 2 Pin, 0.78mm 2 Pin, MMCX, Fixed Cable or Wireless,
              summary about the sound signature of the iem,
              the maximum retail price set by the manufacturer in Indian Rupees: it can not be zero, if found to zero search for it again till a value is found and
              use the following tags as appropriate separated by commas : {IEM_TAGS}

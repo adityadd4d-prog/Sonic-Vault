@@ -29,7 +29,7 @@ import logging
 
 import numpy as np
 
-from constants import FREQUENCY, HARMAN_2019_RAW, BAND_COLUMNS
+from constants import FREQUENCY, HARMAN_2019_RAW
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -39,6 +39,12 @@ logger.setLevel(logging.DEBUG)
 # Configuration (Everything You Might Want To Tune Lives Here)
 # --------------------------------------------------------------------------- #
 
+
+BAND_COLUMNS = (
+    "sub_bass", "mid_bass", "upper_bass",
+    "lower_mids", "center_mids", "upper_mids",
+    "lower_treble", "mid_treble", "upper_treble",
+)
 
 # Band Edges In Hz. Band k Covers [EDGES[k], EDGES[k + 1]) (Half-Open, So No Point Is Counted Twice).
 # Points Above The Last Edge (16 kHz+) Are Ignored, That Region Mostly Measures The Coupler.

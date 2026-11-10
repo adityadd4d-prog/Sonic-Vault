@@ -247,7 +247,7 @@ def insert_data(cursor, data, job_queue, thread_count):
             cursor.execute(score_query, (main_id, *scores))
 
         # Batching Together IEM Names Into 5
-        if len(job) == 3: # Change The Number Here To Increase/Decrease The Batch Volume
+        if len(job) == 5: # Change The Number Here To Increase/Decrease The Batch Volume
             job_queue.put((job, job_no))
             logger.debug(f"Job {job_no} Queued : {list(job.keys())}")
             job_no += 1
