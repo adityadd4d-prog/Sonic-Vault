@@ -42,7 +42,7 @@ class IemDetails(BaseModel):
     anc: str = Field(description="Tell Either ANC is available or Not Available and if available what is the DB level")
     freq_range: str = Field(description="The frequency range upto which the iem can produce sound. Example : 20Hz - 20KHz, 20Hz - 40KHz")
     impedance: str = Field(description="The impedance of the iem in ohms, must include the word ohms")
-    connector_type: str = Field(description="The Type of connector used in the iem, Must be one of : 0.75mm 2Pin, 0.78mm 2Pin, MMCX or N/A in Case Of Earbud")
+    connector_type: str = Field(description="The Type of connector used in the iem, Must be one of : 0.75mm 2 Pin, 0.78mm 2 Pin, MMCX, Fixed Cable or Wireless in Case Of Earbud")
     signature: str = Field(description="One Line Description about how the iem sounds")
     mrp: float = Field(description="The Retail Price set by the manufacturer in Rupees. Don't include The word Rupees keep it strictly in float only, price can't be zero")
     tags: str = Field(description=f"Use as many Suitable tags from the given list as applicable : {IEM_TAGS}")
