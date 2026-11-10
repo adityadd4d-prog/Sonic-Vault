@@ -37,6 +37,12 @@ def main():
     data = reader.scrap()
     logger.info(f"Finished Reading. Loaded {data['loaded']} CSV Files. Failed To Load {len(data['fails'])} Files.")
 
+    if data["loaded"] <= 20:
+        logger.critical("The Directory Contains Very Few Files (Less Than 20).")
+        logger.critical("Terminating Program...")
+        exit()
+
+
     if data["fails"]:
         logger.error(f"The Failed Files Were : {data['fails']}")
     opt = input("\nWould You Like to Proceed With Database Creation [y/N] : ").strip()
@@ -215,10 +221,11 @@ def insert_data(cursor, data, job_queue, thread_count):
     band_marks = ", ".join("?" * len(BAND_COLUMNS))
     measurements_query = f"INSERT OR IGNORE INTO measurements (main_id, {freqs}) VALUES (?, {marks})"
     main_query = "INSERT INTO main (name) VALUES (?)"
-    score_query = f"INSERT INTO scores (main_id, {bands}) VALUES (?, {band_marks}"
+    score_query = f"INSERT INTO scores (main_id, {bands}) VALUES (?, {band_marks})"
 
     job = {}
     job_no = 1
+
     scored_data = score.score_data(data["dataSet"])
 
     # Writing The Scraped Data and Scores To The Database
@@ -322,8 +329,8 @@ def db_schema(cursor):
     cursor.execute(f"""
                 CREATE TABLE IF NOT EXISTS scores (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    main_id INTEGER,
-                    {bands}
+                    main_id INTEGER UNIQUE,
+                    {bands} REAL,
                     FOREIGN KEY (main_id) REFERENCES main(id)
                 )
             """)

@@ -6,6 +6,7 @@ BAND_COLUMNS = (
     "sub_bass", "mid_bass", "upper_bass",
     "lower_mids", "center_mids", "upper_mids",
     "lower_treble", "mid_treble", "upper_treble",
+    "bass", "mids", "treble"
 )
 
 FREQUENCY = (
