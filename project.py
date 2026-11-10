@@ -13,6 +13,7 @@ import logging
 from sys import exit
 from contextlib import closing
 from datetime import datetime
+import os
 
 import score
 import Scrapper
@@ -68,7 +69,7 @@ def main():
         thread.join()
     sqlite_thread.join()
 
-    logger.info("Database Creation Finished.")
+    logger.info("Database Created Successfully.")
     logger.info("Exiting Program...")
 
 
@@ -138,9 +139,11 @@ def sqlite3_thread(db_name, data, job_queue, response_queue, thread_count):
         try:
             insert_data(cursor, data, job_queue, thread_count) # Fills The Main, Scores And Measurement Table And Queues All The Jobs
         except Exception:
-            logger.exception("Failed While Inserting Data ! ")
+            logger.exception("Failed While Inserting Data !")
             logger.critical("Terminating Program...")
-            exit()
+            os._exit(1)
+
+
         logger.info("CSV Data Successfully Inserted.")
         connection.commit()
 
@@ -235,7 +238,7 @@ def insert_data(cursor, data, job_queue, thread_count):
     band_marks = ", ".join("?" * len(BAND_COLUMNS))
     measurements_query = f"INSERT OR IGNORE INTO measurements (main_id, {freqs}) VALUES (?, {marks})"
     main_query = "INSERT INTO main (name) VALUES (?)"
-    score_query = f"INSERT INTO scores (main_id, {bands}) VALUES (?, {band_marks})"
+    score_query = f"INSERT OR REPLACE INTO scores (main_id, {bands}) VALUES (?, {band_marks})"
 
     job = {}
     job_no = 1

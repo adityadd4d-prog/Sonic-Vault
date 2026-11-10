@@ -154,7 +154,7 @@ class DetailFetcherThread:
             job_query = f"Find Details about this IEM as per the system instruction using search grounding : '{list(job.keys())}'"
             logger.info(f"SENDING | Job {job_no} : {list(job.keys())}")
             response = self.api_multi_try("gemma-4-26b-a4b-it", job_query, self._detail_fetcher_config)
-            if response.text is None:
+            if response is None or response.text is None:
                 logger.error(f"INVALID RESPONSE | Job {job_no} : {list(job.keys())}")
                 continue
             json_query = f"Take this Information : '{response.text}' and parse it to proper JSON as Per the Given Schema"
