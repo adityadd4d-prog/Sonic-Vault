@@ -166,15 +166,14 @@ def compare_menu(connection, lookup_dict, names):
         with st.container(border=True):
             plot_response_graphs(connection,[lookup_dict[iem] for iem in iems])
             labels = ["Brand", "Name", "Drivers", "Device Type", "Wireless Available", "ANC", "Frequency Response", "Impedance",
-                  "Connector Type", "Sound Signature", "Maximum Retail Price", "Link"]
+                  "Connector Type", "Sound Signature", "Maximum Retail Price"]
             compare_data = {"Specifications" : labels}
             for iem in iems:
                 details = query_search("SELECT * FROM details WHERE main_id = ?", (lookup_dict[iem],), connection)
                 if details is None:
                     st.warning(f"Details not found for {iem}, skipping.")
                     continue
-                measurements = query_search(f"SELECT * FROM measurements WHERE main_id = {lookup_dict[iem]}", connection)
-                compare_data[iem] = [*details[2:7], *details[8:13], f"₹ {details[13]}", details[7]]
+                compare_data[iem] = [*details[2:7], *details[8:13], f"₹ {details[13]}"]
             compare_df = pd.DataFrame(compare_data)
             st.table(compare_df)
 
@@ -278,10 +277,7 @@ def iem_display(idx, connection):
         st.caption("Details unavailable for this IEM.")
         return
     with st.container(border=True):
-        if details[7] != "Not Available":
-            st.subheader(f"[{details[2] + " " + details[3]}]({details[7]})", anchor=False)
-        else:
-            st.subheader(f"{details[2] + " " + details[3]}", anchor=False)
+        st.subheader(f"{details[2] + " " + details[3]}", anchor=False)
         plot_response_graphs(connection, list([idx]))
         labels = ["Brand", "Name", "Drivers", "Device Type", "Wireless Available", "ANC", "Frequency Response", "Impedance",
                   "Connector Type", "Sound Signature", "Maximum Retail Price"]
