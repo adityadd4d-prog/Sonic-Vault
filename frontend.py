@@ -33,10 +33,12 @@ def main():
     with similarity_search:
         similarity_search_menu(connection, names, lookup_dict)
 
+
 def similarity_search_menu(connection, names, lookup_dict):
     st.header("Similarity Search", anchor=False)
     st.text("Perform Similarity Search By")
     col1, col2 = st.columns([0.05, 0.95], vertical_alignment="center")
+
     with col1:
         st.session_state.switch = st.toggle("", value=False, label_visibility="collapsed")
     with col2:
@@ -44,6 +46,9 @@ def similarity_search_menu(connection, names, lookup_dict):
             st.markdown("**Sound Signature**")
         else:
             st.markdown("**IEM**")
+
+    scores_df = load_all_scores(connection)
+
     if st.session_state.switch:
         with st.container(border=True):
             col3, col4, col5 = st.columns(3)
@@ -52,47 +57,107 @@ def similarity_search_menu(connection, names, lookup_dict):
                 st.session_state.Bass = st.toggle("Advanced Options", value=False, key="t1")
                 if st.session_state.Bass:
                     with st.container(border=True):
-                        sub_bass = st.slider("Sub Bass", min_value=0, max_value=10)
-                        mid_bass = st.slider("Mid Bass", min_value=0, max_value=10)
-                        upper_bass = st.slider("Upper Bass", min_value=0, max_value=10)
+                        sub_bass = st.slider("Sub Bass", min_value=1.0, max_value=10.0, value=5.5, step=0.1)
+                        mid_bass = st.slider("Mid Bass", min_value=1.0, max_value=10.0, value=5.5, step=0.1)
+                        upper_bass = st.slider("Upper Bass", min_value=1.0, max_value=10.0, value=5.5, step=0.1)
                 else:
                     with st.container(border=True):
-                        bass = st.slider("Bass", min_value=0, max_value=10)
+                        bass = st.slider("Bass", min_value=1.0, max_value=10.0, value=5.5, step=0.1)
             with col4:
-                st.text("MIDS")
+                st.markdown("**MIDS**")
                 st.session_state.Mids = st.toggle("Advanced Options", value=False, key="t2")
                 if st.session_state.Mids:
                     with st.container(border=True):
-                        lower_mids = st.slider("Lower Mids", min_value=0, max_value=10)
-                        center_mids = st.slider("Center Mids", min_value=0, max_value=10)
-                        upper_mids = st.slider("Upper Mids", min_value=0, max_value=10)
+                        lower_mids = st.slider("Lower Mids", min_value=1.0, max_value=10.0, value=5.5, step=0.1)
+                        center_mids = st.slider("Center Mids", min_value=1.0, max_value=10.0, value=5.5, step=0.1)
+                        upper_mids = st.slider("Upper Mids", min_value=1.0, max_value=10.0, value=5.5, step=0.1)
                 else:
                     with st.container(border=True):
-                        mids = st.slider("Mids", min_value=0, max_value=10)
+                        mids = st.slider("Mids", min_value=1.0, max_value=10.0, value=5.5, step=0.1)
 
             with col5:
-                st.text("TREBLE")
+                st.markdown("**TREBLE**")
                 st.session_state.Treble = st.toggle("Advanced Options", value=False, key="t3")
                 if st.session_state.Treble:
                     with st.container(border=True):
-                        lower_treble = st.slider("Presence", min_value=0, max_value=10)
-                        mid_treble = st.slider("Brilliance", min_value=0, max_value=10)
-                        upper_treble = st.slider("Air", min_value=0, max_value=10)
+                        lower_treble = st.slider("Presence", min_value=1.0, max_value=10.0, value=5.5, step=0.1)
+                        mid_treble = st.slider("Brilliance", min_value=1.0, max_value=10.0, value=5.5, step=0.1)
+                        upper_treble = st.slider("Air", min_value=1.0, max_value=10.0, value=5.5, step=0.1)
                 else:
                     with st.container(border=True):
-                        treble = st.slider("Treble", min_value=0, max_value=10)
+                        treble = st.slider("Treble", min_value=1.0, max_value=10.0, value=5.5, step=0.1)
 
             submitted = st.button("🔍︎ Search", key="b1")
+
+        if submitted:
+            # 1. Build a target dictionary based on active sliders
+            target_scores = {}
+            if st.session_state.Bass:
+                target_scores.update({"sub_bass": sub_bass, "mid_bass": mid_bass, "upper_bass": upper_bass})
+            else:
+                target_scores.update({"bass": bass})
+
+            if st.session_state.Mids:
+                target_scores.update({"lower_mids": lower_mids, "center_mids": center_mids, "upper_mids": upper_mids})
+            else:
+                target_scores.update({"mids": mids})
+
+            if st.session_state.Treble:
+                target_scores.update(
+                    {"lower_treble": lower_treble, "mid_treble": mid_treble, "upper_treble": upper_treble})
+            else:
+                target_scores.update({"treble": treble})
+
+            # 2. Calculate Euclidean distance for the selected bands
+            distance_series = pd.Series(0.0, index=scores_df.index)
+            for band, target_val in target_scores.items():
+                distance_series += (scores_df[band] - target_val) ** 2
+
+            scores_df["distance"] = distance_series ** 0.5
+
+            # 3. Sort, extract IDs, and pass to pagination
+            closest_matches = scores_df.sort_values("distance").head(15)
+            results = [(idx,) for idx in closest_matches["main_id"]]
+
+            st.session_state.similarity_results = results
+            st.session_state.page = 0
+
+        if "similarity_results" in st.session_state:
+            st.subheader("Closest Matches:")
+            list_iem(st.session_state.similarity_results, connection)
 
     else:
         col1, col2 = st.columns([0.7, 0.3])
         with col1:
             search_iem = st.selectbox("Select IEM", names, label_visibility="collapsed", index=None)
         with col2:
-            search = st.button("🔍︎ Search", key="search_similarity")
-        if search and search_iem:
-            iem_display(lookup_dict[search_iem], connection)
+            search = st.button("🔍︎ Find Similar", key="search_similarity")
 
+        if search and search_iem:
+            target_id = lookup_dict[search_iem]
+
+            # Using the 9 detailed bands for higher accuracy when comparing IEM to IEM
+            detailed_bands = [
+                "sub_bass", "mid_bass", "upper_bass",
+                "lower_mids", "center_mids", "upper_mids",
+                "lower_treble", "mid_treble", "upper_treble"
+            ]
+
+            target_vector = scores_df[scores_df["main_id"] == target_id][detailed_bands].iloc[0]
+
+            # Calculate distance across all 9 bands
+            scores_df["distance"] = ((scores_df[detailed_bands] - target_vector) ** 2).sum(axis=1) ** 0.5
+
+            # Filter out the target itself and get top matches
+            closest_matches = scores_df[scores_df["main_id"] != target_id].sort_values("distance").head(15)
+            results = [(idx,) for idx in closest_matches["main_id"]]
+
+            st.session_state.similarity_results = results
+            st.session_state.page = 0
+
+        if "similarity_results" in st.session_state and not st.session_state.switch:
+            st.subheader("Similar IEMs:")
+            list_iem(st.session_state.similarity_results, connection)
 
 
 def compare_menu(connection, lookup_dict, names):
@@ -220,7 +285,6 @@ def iem_display(idx, connection):
     # It Help Generates A Display Card For Displaying IEM Details And Frequency Graph
     details = query_search(f"SELECT * FROM details WHERE main_id = {idx}",connection)
     if details is None:
-        st.error("IEM Details Not Found!")
         return
     with st.container(border=True):
         if details[7] != "Not Available":
@@ -315,6 +379,9 @@ def query_search_all(query, _conn):
     cursor = _conn.cursor()
     return cursor.execute(query).fetchall()
 
+@st.cache_data
+def load_all_scores(_conn):
+    return pd.read_sql_query("SELECT * FROM scores", _conn)
 
 if __name__ == "__main__":
     main()

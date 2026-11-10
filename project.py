@@ -13,6 +13,7 @@ import logging
 from sys import exit
 from contextlib import closing
 from datetime import datetime
+from time import sleep
 import os
 
 import score
@@ -222,6 +223,7 @@ def start_job_consumer_threads(api_keys, job_queue, response_queue):
         thread = threading.Thread(target=detail_fetcher.live_detail_fetcher, name=thread_name)
         threads_tracker.append(thread)
         thread.start()
+        sleep(2)
     return threads_tracker
 
 
@@ -263,8 +265,8 @@ def insert_data(cursor, data, job_queue, thread_count):
         if scores is not None:
             cursor.execute(score_query, (main_id, *scores))
 
-        # Batching Together IEM Names Into 5
-        if len(job) == 5: # Change The Number Here To Increase/Decrease The Batch Volume
+        # Batching Together IEM Names Into 3
+        if len(job) == 3: # Change The Number Here To Increase/Decrease The Batch Volume
             job_queue.put((job, job_no))
             logger.debug(f"Job {job_no} Queued : {list(job.keys())}")
             job_no += 1

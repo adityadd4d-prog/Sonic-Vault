@@ -5,6 +5,7 @@ A Module Containing Classes For Scrapper And Data Fetcher Worker Thread
 import csv
 import logging
 import time
+import random
 from pathlib import Path
 
 import httpx
@@ -186,11 +187,17 @@ class DetailFetcherThread:
                     contents=query,
                     config=config
                 )
-                time.sleep(2)
-                return response
+                if not response or not response.text:
+                    logger.debug("Empty response text received. Retrying...")
+                    fail_count += 1
+                else:
+                    time.sleep(2)
+                    return response
             except errors.APIError as e:
                 if e.code in [429]:
                     logger.debug("Rate Limited. Trying Again")
+                elif e.code in [503, 500]:
+                    time.sleep(min(2 ** try_count, 60) + random.uniform(1, 5))
                 else:
                     logger.debug(f"API Error : {e.code}")
                     fail_count += 1
