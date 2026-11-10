@@ -136,7 +136,7 @@ def search_menu(connection, lookup_dicts, names, brands, tags):
             with col1:
                 brand = st.multiselect("Brand : ", brands, max_selections=3)
             with col2:
-                c_type = st.multiselect("Connector Type : ", ["0.78mm 2Pin", "0.75mm 2 Pin", "MMCX"])
+                c_type = st.multiselect("Connector Type : ", ["0.78mm 2 Pin", "0.75mm 2 Pin", "MMCX", "Fixed Wire", "Wireless"])
             st.text("Price Range :")
             col3, col4 = st.columns(2)
             with col3:
