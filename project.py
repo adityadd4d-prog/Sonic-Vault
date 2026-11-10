@@ -111,7 +111,9 @@ def get_api_keys():
             api_keys = []
             with open(file_name, "r") as file:
                 for line in file:
-                    api_keys.append(line.strip())
+                    key = line.strip()
+                    if key:
+                        api_keys.append(key)
                 return tuple(api_keys)
         except FileNotFoundError:
             logger.error(f"{file_name} Not Found !")
@@ -122,6 +124,7 @@ def get_api_keys():
             logger.warning("No API Keys To Spawn Threads !")
             logger.info("Exiting Program...")
             exit()
+
 
 
 def sqlite3_thread(db_name, data, job_queue, response_queue, thread_count):
@@ -230,7 +233,7 @@ def start_job_consumer_threads(api_keys, job_queue, response_queue):
 def insert_data(cursor, data, job_queue, thread_count):
     """
     It Writes All The Data Scraped From The CSV Files, Scores Them And Inserts Them In The Database.
-    It Also Batches The Names Of the IEMs In 5 And Inserts Them Into The Job Queue.
+    It Also Batches The Names Of the IEMs In 3 And Inserts Them Into The Job Queue.
     It Also Inserts The Poison Pills According To The Number Of Threads Spawned.
     """
 
@@ -338,6 +341,7 @@ def db_schema(cursor):
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     main_id INTEGER,
                     tag_id INTEGER,
+                    UNIQUE (main_id, tag_id),
                     FOREIGN KEY (main_id) REFERENCES main(id),
                     FOREIGN KEY (tag_id) REFERENCES tags(id)
                 )

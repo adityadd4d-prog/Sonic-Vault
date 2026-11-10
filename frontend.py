@@ -119,12 +119,12 @@ def similarity_search_menu(connection, names, lookup_dict):
             closest_matches = scores_df.sort_values("distance").head(15)
             results = [(idx,) for idx in closest_matches["main_id"]]
 
-            st.session_state.similarity_results = results
-            st.session_state.page = 0
+            st.session_state.sim_sig_results = [(idx,) for idx in closest_matches["main_id"]]
+            st.session_state.sim_sig_page = 0
 
-        if "similarity_results" in st.session_state:
+        if "sim_sig_results" in st.session_state:
             st.subheader("Closest Matches:")
-            list_iem(st.session_state.similarity_results, connection)
+            list_iem(st.session_state.sim_sig_results, connection, "sim_sig")
 
     else:
         col1, col2 = st.columns([0.7, 0.3])
@@ -135,29 +135,24 @@ def similarity_search_menu(connection, names, lookup_dict):
 
         if search and search_iem:
             target_id = lookup_dict[search_iem]
-
-            # Using the 9 detailed bands for higher accuracy when comparing IEM to IEM
             detailed_bands = [
                 "sub_bass", "mid_bass", "upper_bass",
                 "lower_mids", "center_mids", "upper_mids",
                 "lower_treble", "mid_treble", "upper_treble"
             ]
+            row = scores_df[scores_df["main_id"] == target_id]
+            if row.empty:
+                st.warning("No score data available for this IEM.")
+            else:
+                target_vector = row[detailed_bands].iloc[0]
+                scores_df["distance"] = ((scores_df[detailed_bands] - target_vector) ** 2).sum(axis=1) ** 0.5
+                closest = scores_df[scores_df["main_id"] != target_id].sort_values("distance").head(15)
+                st.session_state.sim_iem_results = [(idx,) for idx in closest["main_id"]]
+                st.session_state.sim_iem_page = 0
 
-            target_vector = scores_df[scores_df["main_id"] == target_id][detailed_bands].iloc[0]
-
-            # Calculate distance across all 9 bands
-            scores_df["distance"] = ((scores_df[detailed_bands] - target_vector) ** 2).sum(axis=1) ** 0.5
-
-            # Filter out the target itself and get top matches
-            closest_matches = scores_df[scores_df["main_id"] != target_id].sort_values("distance").head(15)
-            results = [(idx,) for idx in closest_matches["main_id"]]
-
-            st.session_state.similarity_results = results
-            st.session_state.page = 0
-
-        if "similarity_results" in st.session_state and not st.session_state.switch:
+        if "sim_iem_results" in st.session_state:
             st.subheader("Similar IEMs:")
-            list_iem(st.session_state.similarity_results, connection)
+            list_iem(st.session_state.sim_iem_results, connection, "sim_iem")
 
 
 def compare_menu(connection, lookup_dict, names):
@@ -174,7 +169,7 @@ def compare_menu(connection, lookup_dict, names):
                   "Connector Type", "Sound Signature", "Maximum Retail Price", "Link"]
             compare_data = {"Specifications" : labels}
             for iem in iems:
-                details = query_search(f"SELECT * FROM details WHERE main_id = {lookup_dict[iem]}", connection)
+                details = query_search("SELECT * FROM details WHERE main_id = ?", (lookup_dict[iem],), connection)
                 if details is None:
                     st.warning(f"Details not found for {iem}, skipping.")
                     continue
@@ -208,11 +203,12 @@ def search_menu(connection, lookup_dicts, names, brands, tags):
                 u_price = st.number_input("To :", min_value=0.0, max_value=2000000.0, value=5000.0, step=1.0)
             submitted = st.form_submit_button("🔍︎ Search")
         if submitted:
-            query = format_query(brand, c_type, l_price, u_price, selected_tags, tags)
-            st.session_state.search_results = query_search_all(query, connection)
-            st.session_state.page = 0
+            query, params = format_query(brand, c_type, l_price, u_price, selected_tags, tags)
+            st.session_state.search_results = query_search_all(query, params, connection)
+            st.session_state.search_page = 0
+
         if "search_results" in st.session_state and st.session_state.search_results:
-            list_iem(st.session_state.search_results, connection)
+            list_iem(st.session_state.search_results, connection, "search")
         elif "search_results" in st.session_state:
             st.info("No IEMs found matching your filters.")
     else:
@@ -226,65 +222,60 @@ def search_menu(connection, lookup_dicts, names, brands, tags):
 
 
 def format_query(brand, c_type, l_price, u_price, selected_tags, lookup_tags):
-    """
-    This Helps Build A Dynamic SQLite Query Based On The Input Parameters Given To The Function
-    """
-    temp_query = []
+    """Builds a parameterized query. Returns (query, params)."""
+    clauses, params = [], []
 
     if brand:
-        temp = ", ".join(f"'{name}'" for name in brand)
-        temp_query.append(f"brand IN ({temp})")
-
+        clauses.append(f"brand IN ({','.join('?' * len(brand))})")
+        params.extend(brand)
     if c_type:
-        temp = ", ".join(f"'{name}'" for name in c_type)
-        temp_query.append(f"connector_type IN ({temp})")
+        clauses.append(f"connector_type IN ({','.join('?' * len(c_type))})")
+        params.extend(c_type)
 
-    temp_query.append(f"mrp >= {l_price}")
-    temp_query.append(f"mrp <= {u_price}")
+    clauses.append("mrp >= ?")
+    clauses.append("mrp <= ?")
+    params.extend([l_price, u_price])
 
     if selected_tags:
-        tags_id = ", ".join(f"'{lookup_tags[name]}'" for name in selected_tags)
-        temp = f"""
-                SELECT main_id FROM tag_relations WHERE tag_id IN ({tags_id}) GROUP BY main_id HAVING COUNT(DISTINCT tag_id) = {len(selected_tags)}
-                """
-        temp_query.append(f"main_id IN ({temp})")
+        tag_ids = [lookup_tags[name] for name in selected_tags]
+        clauses.append(
+            f"main_id IN (SELECT main_id FROM tag_relations "
+            f"WHERE tag_id IN ({','.join('?' * len(tag_ids))}) "
+            f"GROUP BY main_id HAVING COUNT(DISTINCT tag_id) = ?)"
+        )
+        params.extend(tag_ids)
+        params.append(len(tag_ids))
 
-    query = "SELECT main_id FROM details WHERE " + " AND ".join(temp_query)
-    return query
+    return "SELECT main_id FROM details WHERE " + " AND ".join(clauses), tuple(params)
 
 
-def list_iem(iems, connection):
-    """
-    This Helps Generate Page Display When The Number Of IEMs To Display Exceeds 5.
-    It Does So That By Making Sure That At Any Given Time There Are No More Than 5 IEM Details Displayed
-    Even If The Query Fetched More Than 5 Results.
-    """
-    page = st.session_state.get("page", 0)
+def list_iem(iems, connection, prefix):
+    page_key = f"{prefix}_page"
+    page = st.session_state.get(page_key, 0)
     total_pages = max(1, -(-len(iems) // PAGE_SIZE))
     page = min(page, total_pages - 1)
 
     start = page * PAGE_SIZE
-    end = start + PAGE_SIZE
-
-    for iem in iems[start:end]:
+    for iem in iems[start:start + PAGE_SIZE]:
         iem_display(*iem, connection)
 
     if total_pages > 1:
         col1, col2, _ = st.columns([1, 1, 8])
         with col1:
-            if st.button("<", disabled=(page == 0)):
-                st.session_state.page = page - 1
+            if st.button("<", key=f"{prefix}_prev", disabled=(page == 0)):
+                st.session_state[page_key] = page - 1
                 st.rerun()
         with col2:
-            if st.button(">", disabled=(page >= total_pages - 1)):
-                st.session_state.page = page + 1
+            if st.button(">", key=f"{prefix}_next", disabled=(page >= total_pages - 1)):
+                st.session_state[page_key] = page + 1
                 st.rerun()
 
 
 def iem_display(idx, connection):
     # It Help Generates A Display Card For Displaying IEM Details And Frequency Graph
-    details = query_search(f"SELECT * FROM details WHERE main_id = {idx}",connection)
+    details = query_search("SELECT * FROM details WHERE main_id = ?", (idx,), connection)
     if details is None:
+        st.caption("Details unavailable for this IEM.")
         return
     with st.container(border=True):
         if details[7] != "Not Available":
@@ -311,7 +302,7 @@ def plot_response_graphs(connection, main_ids):
         df = load_measurement(connection, main_id)
         if df is None:
             continue
-        temp = query_search(f"SELECT name FROM main WHERE id = {main_id}", connection)
+        temp = query_search("SELECT name FROM main WHERE id = ?", (main_id,), connection)
         df["curve"] = temp[0]
         plot_data.append(df)
 
@@ -359,7 +350,7 @@ def load_iem_data(_conn):
     A Tuple Containing The Frequently Used Data Such As IEM names, IEM brand names and tags Used
     """
     cursor = _conn.cursor()
-    data = cursor.execute("SELECT * FROM main").fetchall()
+    data = cursor.execute("SELECT m.id, m.name FROM main m JOIN details d ON d.main_id = m.id").fetchall()
     lookup_dict = {name : main_id for main_id, name in data}
     names = sorted([name for name in lookup_dict.keys()])
     brands = sorted([brand[0] for brand in cursor.execute("SELECT DISTINCT brand FROM details").fetchall()])
@@ -369,19 +360,19 @@ def load_iem_data(_conn):
 
 
 @st.cache_data
-def query_search(query, _conn):
-    cursor = _conn.cursor()
-    return cursor.execute(query).fetchone()
+def query_search(query, params, _conn):
+    return _conn.execute(query, params).fetchone()
 
 
 @st.cache_data
-def query_search_all(query, _conn):
-    cursor = _conn.cursor()
-    return cursor.execute(query).fetchall()
+def query_search_all(query, params, _conn):
+    return _conn.execute(query, params).fetchall()
+
 
 @st.cache_data
 def load_all_scores(_conn):
-    return pd.read_sql_query("SELECT * FROM scores", _conn)
+    return pd.read_sql_query("SELECT s.* FROM scores s JOIN details d ON d.main_id = s.main_id", _conn)
+
 
 if __name__ == "__main__":
     main()
