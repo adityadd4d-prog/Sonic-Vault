@@ -11,10 +11,13 @@ import threading
 import queue
 import logging
 from sys import exit
+from contextlib import closing
+from datetime import datetime
 
+import score
 import Scrapper
 from Scrapper import IEM_TAGS
-from constants import COLUMNS
+from constants import COLUMNS, BAND_COLUMNS
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -126,7 +129,7 @@ def sqlite3_thread(db_name, data, job_queue, response_queue, thread_count):
         logger.info("Database Schema Successfully Commited.")
 
         fill_tags_table(cursor) # Fills The Tags Table
-        insert_data(cursor, data, job_queue, thread_count) # Fills The Main And Measurement Table And Queues All The Jobs
+        insert_data(cursor, data, job_queue, thread_count) # Fills The Main, Scores And Measurement Table And Queues All The Jobs
         logger.info("CSV Data Successfully Inserted.")
         connection.commit()
 
@@ -201,22 +204,25 @@ def start_job_consumer_threads(api_keys, job_queue, response_queue):
 
 def insert_data(cursor, data, job_queue, thread_count):
     """
-    It Writes All The Data Scraped From The CSV Files And Inserts Them In The Database.
+    It Writes All The Data Scraped From The CSV Files, Scores Them And Inserts Them In The Database.
     It Also Batches The Names Of the IEMs In 5 And Inserts Them Into The Job Queue.
     It Also Inserts The Poison Pills According To The Number Of Threads Spawned.
     """
 
     freqs = ", ".join(COLUMNS)
     marks = ", ".join("?" * len(COLUMNS))
+    bands = ", ".join(BAND_COLUMNS)
+    band_marks = ", ".join("?" * len(BAND_COLUMNS))
     measurements_query = f"INSERT OR IGNORE INTO measurements (main_id, {freqs}) VALUES (?, {marks})"
     main_query = "INSERT INTO main (name) VALUES (?)"
+    score_query = f"INSERT INTO scores (main_id, {bands}) VALUES (?, {band_marks}"
 
     job = {}
     job_no = 1
+    scored_data = score.score_data(data["dataSet"])
 
-    # Writing The Scraped Data To The Database
-    for item in data["dataSet"]:
-        name, measurements = item
+    # Writing The Scraped Data and Scores To The Database
+    for name, measurements, scores in scored_data:
 
         try:
             cursor.execute(main_query, (name,))
@@ -229,6 +235,9 @@ def insert_data(cursor, data, job_queue, thread_count):
             job[name.lower()] = main_id
 
         cursor.execute(measurements_query, (main_id, *measurements))
+
+        if scores is not None:
+            cursor.execute(score_query, (main_id, *scores))
 
         # Batching Together IEM Names Into 5
         if len(job) == 3: # Change The Number Here To Increase/Decrease The Batch Volume
@@ -308,29 +317,54 @@ def db_schema(cursor):
                 )
             """)
 
+    bands = " REAL,".join(BAND_COLUMNS)
+
+    cursor.execute(f"""
+                CREATE TABLE IF NOT EXISTS scores (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    main_id INTEGER,
+                    {bands}
+                    FOREIGN KEY (main_id) REFERENCES main(id)
+                )
+            """)
+
 
 def fill_tags_table(cursor):
     cursor.executemany("INSERT OR IGNORE INTO tags (tag) VALUES (?)", [(tag,) for tag in IEM_TAGS])
 
 
-def check(db_name):
+def check(db_name: str) -> None:
     """
-    Checks If There Is Already A File In The Directory With The Name 'db_name',
-    Then Updates/Replaces The Database Or Exits The Program As Prompted By The User.
+    Checks if 'db_name' exists in the current directory.
+    If found, prompts the user to back it up and remove the original, or exit.
     """
-    for file in Path(Path.cwd()).iterdir():
-        if file.name == db_name:
-            logger.warning(f"There Already Exists a '{db_name}' File.")
-            opt = input(
-                f"\nWould You Like to Replace/Update/Exit it [R/U/E] : ").strip()
-            if opt.lower() in ["replace", "r"]:
-                Path(db_name).unlink(missing_ok=True)
-            elif opt.lower() in ["update", "u"]:
-                return
-            else:
-                logger.info("Database Creation Cancelled.")
-                logger.info("Exiting Program...")
-                exit()
+    current_dir = Path.cwd()
+    db_file = current_dir / db_name
+
+    if not db_file.is_file():
+        return
+
+    logger.warning(f"There already exists a '{db_name}' file.")
+    opt = input("\nWould you like to continue? [y/N]: ").strip().lower()
+
+    if opt in ("yes", "y"):
+        backup_folder = current_dir / "backups"
+        backup_folder.mkdir(parents=True, exist_ok=True)
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_file = backup_folder / f"{db_file.name}_{timestamp}"
+        logger.info(f"Backing up existing database to: {backup_file}")
+
+        # Explicitly close connections so the file lock is released before unlink()
+        with closing(sqlite3.connect(db_file)) as source_conn, \
+                closing(sqlite3.connect(backup_file)) as backup_conn:
+            source_conn.backup(backup_conn)
+
+        db_file.unlink()
+        logger.info("Old database file removed.")
+    else:
+        logger.info("Database creation cancelled. Exiting program...")
+        exit(0)
 
 
 if __name__ == "__main__":

@@ -2,6 +2,12 @@
 Fixed Reference Value that does not change. The reference point is Harman target 2019
 """
 
+BAND_COLUMNS = (
+    "sub_bass", "mid_bass", "upper_bass",
+    "lower_mids", "center_mids", "upper_mids",
+    "lower_treble", "mid_treble", "upper_treble",
+)
+
 FREQUENCY = (
     20.0, 20.2, 20.4, 20.61, 20.81, 21.02, 21.23, 21.44,
     21.66, 21.87, 22.09, 22.31, 22.54, 22.76, 22.99, 23.22,
