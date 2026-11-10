@@ -22,13 +22,9 @@ IEM_TAGS = (
         "Dynamic Driver", "Balanced Armature", "Planar Magnetic", "Electrostatic", "Hybrid", "Tribrid",
         "Neutral", "Warm", "Bright", "Dark", "V Shaped", "U Shaped", "Basshead", "Mid Forward", "Harman Target",
         "Stage Monitor", "Studio Reference", "Casual Listening", "Gaming", "Sports", "Sleep Friendly", "ANC",
-        "Detachable Cable", "MMCX", "2 Pin", "Wireless", "Balanced Cable Included", "Tuning Switches",
+        "Detachable Cable", "MMCX", "0.78mm 2 Pin", "0.75mm 2 Pin", "Fixed Cable", "Wireless", "Balanced Cable Included", "Tuning Switches",
         "Quadbrid", "Pentabrid", "Hexabrid", "Earbud", "In Ear"
     )
-
-# # CURATOR_SITES = (
-#         "Linsoul", "HiFigo", "Shenzenaudio", "Headphonezone", "TheAudioStore", "Amazon", "Flipkart"
-#     )
 
 
 class IemDetails(BaseModel):
