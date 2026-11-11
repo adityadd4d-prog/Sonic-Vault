@@ -1,6 +1,5 @@
 # Sonic Vault
 
-#### Video Demo: [Youtube Video](https://youtu.be/XQ1_u9Y5LAo?feature=shared)
 
 #### Live Site: [Streamlit](https://sonic-vault.streamlit.app/)
 
@@ -113,7 +112,7 @@ This module is comprised of :-
    Any tag returned by the model that is not in this list is automatically
    discarded, providing a guardrail against LLM hallucinations.
 
-#### 3. `reference_data.py`
+#### 3. `constants.py`
 Contains the frequency response data from the Harman 2019 In-Ear Target.
 This data is used as a reference curve and is overlaid on every frequency
 response graph. The file contains two constant tuples :-
